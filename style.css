@@ -8,7 +8,10 @@ h3 {
 }
 
 body {
-  background: #000000;
+  background: #ffffff;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
 }
 
 header {
@@ -186,7 +189,18 @@ footer p {
   height: calc(100% - 60px);
 }
 
-form {
+.login-container {
+  font-family: Arial, sans-serif;
+  background-color: #f4f4f4;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+}
+
+.login-form {
   background-color: #fff;
   padding: 20px;
   border-radius: 8px;
@@ -194,19 +208,19 @@ form {
   width: 300px;
 }
 
-label {
+.login-label {
   display: block;
   margin-bottom: 8px;
 }
 
-input {
+.login-input {
   width: 100%;
   padding: 8px;
   margin-bottom: 16px;
   box-sizing: border-box;
 }
 
-button {
+.login-button {
   background-color: #4caf50;
   color: #fff;
   padding: 10px;
@@ -215,3 +229,4 @@ button {
   cursor: pointer;
   width: 100%;
 }
+
