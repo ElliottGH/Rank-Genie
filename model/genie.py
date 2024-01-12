@@ -1,3 +1,55 @@
+def preprocess(reg_data, pay_data):
+    # Clean Up User registration data
+    reg_data['id'] = reg_data['CreatedDate']
+    reg_data = reg_data.drop(['CreatedDate', 'Billing to IP Distance (Miles)', 'BillingAge', 'Billing Name to Reg Name Similarity', 'Campaign', 'utm_term', 'EmailAge', 'ExpectedVolumeFrequency'], axis=1)
+    reg_data['Registered_IP'] = reg_data['Registered_IP'].apply(lambda row: False if not is_valid_ip(row) else row)
+    reg_data = reg_data[reg_data['Registered_IP'] != False].reset_index(drop=True)
+
+    # dummy code UserType
+    reg_data['UserType'].fillna('Unknown', inplace=True)
+    reg_data = pd.get_dummies(reg_data, columns=['UserType'], prefix='UserType')
+
+    # Clean up Payment data
+    pay_data.dropna(how='all', inplace=True)
+
+    # Fixing variable types
+    reg_data['id']=reg_data['id'].astype(int)
+    pay_data['id']=pay_data['id'].astype(int)
+
+    merged_df = pd.merge(reg_data, pay_data, on='id', how='inner')
+
+    merged_df.rename(columns={'UserAgent': 'DeviceName'}, inplace=True)
+
+
+    def extract_device_name(cell_value):
+        pattern = r'"deviceName":"(.*?)(?:"|$)'
+        match = re.search(pattern, str(cell_value))
+        return match.group(1).strip() if match else None
+
+
+    merged_df['DeviceName'] = merged_df['DeviceName'].apply(extract_device_name)
+
+    # dummy code DeviceName
+    merged_df['DeviceName'].fillna('Unknown', inplace=True)
+    merged_df = pd.get_dummies(merged_df, columns=['DeviceName'], prefix='DeviceName')
+
+    # binary encode Amount
+    merged_df['Amount'].fillna(0, inplace=True)
+    merged_df['Amount'] = merged_df['Amount'].apply(lambda x: 0 if x == 0 else 1)
+
+    # categorize Joining Reasons
+    merged_df['JoiningReason'].fillna("None", inplace=True)
+    merged_df['JoiningReason'] = merged_df['JoiningReason'].apply(lambda x: x if x in ["Real Estate Wholesaler/Investor/REI", "Advertising/Marketing Agency", "Political", "Call Center/Market Research", "None"] else "Others")
+
+    # dummy code JoiningReason
+    merged_df['JoiningReason'].fillna('Unknown', inplace=True)
+    merged_df = pd.get_dummies(merged_df, columns=['JoiningReason'], prefix='JoiningReason')
+
+    # dummy code ISPCountryName
+    merged_df['ISPCountryName'].fillna('Unknown', inplace=True)
+    merged_df = pd.get_dummies(merged_df, columns=['ISPCountryName'], prefix='ISPCountryName')
+
+    return merged_df
 
 
 # Using the risk score as the target variable
