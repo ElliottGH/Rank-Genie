@@ -1,3 +1,48 @@
+
+import numpy as np
+import pandas as pd
+import matplotlib as plt
+import re
+
+from sklearn.model_selection import train_test_split
+from sklearn.pipeline import Pipeline
+from sklearn.linear_model import LinearRegression, Ridge, LogisticRegression
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import make_scorer, mean_absolute_error, r2_score, mean_squared_error, accuracy_score, precision_score, confusion_matrix
+
+from google.colab import drive
+drive.mount('/content/drive')
+
+def is_valid_ip(address):
+
+    address = f"{address}"
+    # Split the address into blocks
+    blocks = address.split('.')
+
+    # Check if there are exactly 4 blocks
+    if len(blocks) != 4:
+        return False
+
+    # Check each block
+    for block in blocks:
+        # Check if the block is a valid integer
+        if not block.isdigit():
+            return False
+
+        # Check if the integer is in the valid range (0-255)
+        num = int(block)
+        if not (0 <= num <= 255):
+            return False
+
+        # Check if the block has the correct length (1, 2, or 3 digits)
+        if len(block) < 1 or len(block) > 3:
+            return False
+
+        # Check for leading zeros in blocks with more than one digit
+        if len(block) > 1 and block[0] == '0':
+            return False
+
+    return True
 def preprocess(reg_data, pay_data):
     # Clean Up User registration data
     reg_data['id'] = reg_data['CreatedDate']
@@ -51,7 +96,13 @@ def preprocess(reg_data, pay_data):
 
     return merged_df
 
+regdf = pd.read_csv("/content/drive/MyDrive/CapstoneProject(Ranking_System)/The Model OwO/UserRegDataset.csv")
+paydf = pd.read_csv("/content/drive/MyDrive/CapstoneProject(Ranking_System)/The Model OwO/payments.csv")
 
+#regdf_cleaned, paydf_cleaned = preprocess(regdf, paydf)
+preprocessed_df = preprocess(regdf, paydf)
+preprocessed_df.to_csv("Output.csv", index=None)
+preprocessed_df.head()
 # Using the risk score as the target variable
 def configure_linear_model(df):
     y = df['Amount']
