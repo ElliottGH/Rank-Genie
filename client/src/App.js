@@ -1,7 +1,35 @@
 import logo from './logo.svg';
 import './App.css';
+import React, {useState, useEffect} from 'react'
 
 function App() {
+
+  const [data, setData] = useState('')
+
+  //This calls backend on load/refresh of the react page
+
+  //useEffect(() => {
+    //fetch("/back").then(
+      //res => res.json()
+    //).then(
+      //data => {
+        //setData(data)
+        //console.log(data)
+      //}
+    //)
+
+  //}, [])
+
+  const handleClick = async() => {
+    try{
+      const data = await(await fetch("/back")).json()
+      setData(data)
+      console.log(data)
+    } catch(err) {
+      console.log(err.message)
+    }
+  }
+
   return (
     <div>
     <header>
@@ -35,7 +63,8 @@ function App() {
       <aside className="data-trends">
         <h3>Data Trends</h3>
         {/* <!-- data trends stuff --> */}
-        <button className="filter-button">Filter</button>
+        <button type = "submit" onClick = {handleClick} className="filter-button">Filter</button>
+        <p>{data.backString}</p>
       </aside>
 
       <section className="data-visualization-container">
