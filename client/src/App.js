@@ -11,7 +11,8 @@ function App() {
   //   labels: UserData.map((data) => data.year),     //will create a new array that will contain, in this case, year for each element.Loops through dataset to get each 
   //   datasets: [{
   //     label: "Users ____",   //What does this piece of data represent?
-  //     data: UserData.map((data) => data.user____)
+  //     data: UserData.map((data) => data.user____),
+  //     backgroundColor: ["red", "blue"]  //Changes bar colors, can use rgba and hexadecimal as well
   //   }]  
   // })
 
