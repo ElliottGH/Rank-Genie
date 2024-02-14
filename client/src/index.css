@@ -130,17 +130,16 @@ footer p {
   flex-direction: column;
 }
 
-.filter-button {
-  display: block;
+.basic-button {
+  display: inline-block; /*block*/
   padding: 10px 20px;
-  margin-top: 10px;
   background: #ddd;
   border: none;
   border-radius: 5px;
   cursor: pointer;
 }
 
-.filter-button:hover {
+.basic-button:hover {
   background: #ccc;
 }
 
@@ -163,19 +162,18 @@ footer p {
   position: relative;
   width: 50%;
   padding-top: 40px;
+  height: auto;
 }
 
 .data-header {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  padding-left: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-right: 20px;
 }
 
 .data-header p {
   padding-left: 20px;
-  margin-top: 20px;
   font-weight: bold;
 }
 
@@ -183,5 +181,19 @@ footer p {
   display: grid;
   grid-template-columns: 1fr 1fr;
   grid-gap: 20px;
-  height: calc(100% - 60px);
+  height: calc(100vh - 50px);
+}
+
+.file-input-container {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+.drag-drop-prompt {
+  color: #555;
+  margin-top: 10px;
+  font-style: italic;
+  text-align: center;
 }
