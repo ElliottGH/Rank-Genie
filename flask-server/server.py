@@ -65,17 +65,52 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 #I think this needs to be combined with the temporary backend in App.js to work properly.
 #Parses the given CSV file
 def parseCSV(filePath):
-      # CVS Column Names
-      col_names = ['']
-      # Use Pandas to parse the CSV file
-      csvData = pd.read_csv(filePath, names=col_names, header=None)
-      # Loop through the Rows
-      for i,row in csvData.iterrows():
-             sql = "INSERT INTO addresses ( , ) VALUES (%s)"
-             value = (row[''],row[''],str(row['']))
-             myCursor.execute(sql, value, if_exists='append')
-             mydb.commit()
-             print(i,row[''])
+    # Use Pandas to parse the CSV file
+    csvData = pd.read_csv(filePath)
+    fileName = os.path.basename(filePath)
+    # Sanitize column names by removing special characters and spaces
+    csvData.columns = [col.replace(" ", "_").replace("-", "_").replace("(", "").replace(")", "").replace("/", "_").replace(",", "") for col in csvData.columns]
+
+    # Create the table if it doesn't exist
+    create_table_query = f"CREATE TABLE IF NOT EXISTS {fileName} ("
+    for col in csvData.columns:
+        create_table_query += f"`{col}` TEXT,"  # Use backticks to escape column names
+    create_table_query = create_table_query[:-1]  # remove the last comma
+    create_table_query += ")"
+    myCursor.execute(create_table_query)
+    mydb.commit()
+
+    # Insert data into the table
+    for index, row in csvData.iterrows():
+        insert_query = f"INSERT INTO {fileName} ({', '.join(csvData.columns)}) VALUES ({', '.join(['%s']*len(row))})"
+        myCursor.execute(insert_query, tuple(row))
+    mydb.commit()
+def parseCSV(filePath):
+    # Use Pandas to parse the CSV file
+    csvData = pd.read_csv(filePath)
+    fileName = os.path.splitext(os.path.basename(filePath))[0]
+    print("Filename:", fileName)  # Print filename for debugging purposes
+
+    # Sanitize column names by replacing special characters and spaces
+    csvData.columns = [col.replace(" ", "_").replace("-", "_").replace("(", "").replace(")", "").replace("/", "_").replace(",", "") for col in csvData.columns]
+
+    # Create the table if it doesn't exist
+    create_table_query = f"CREATE TABLE IF NOT EXISTS {fileName} ("
+    for col in csvData.columns:
+        create_table_query += f"`{col}` TEXT,"  # Use backticks to escape column names
+    create_table_query = create_table_query[:-1]  # remove the last comma
+    create_table_query += ")"
+    myCursor.execute(create_table_query)
+    mydb.commit()
+
+    # Insert data into the table
+    for index, row in csvData.iterrows():
+        insert_query = f"INSERT INTO {fileName} ({', '.join(csvData.columns)}) VALUES ({', '.join(['%s']*len(row))})"
+        myCursor.execute(insert_query, tuple(row))
+    mydb.commit()
+
+
+parseCSV("dataset.csv")
 
 if __name__ == '__main__':
     app.run(port = 5000)

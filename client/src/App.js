@@ -24,7 +24,7 @@ function App() {
   // Temporary backend call for demo
   const handleClick = async () => {
     try {
-      const data = await (await fetch("/back")).json();
+      const data = await (await fetch("/fileUpload")).json();
       setData(data);
       console.log(data);
     } catch (err) {
