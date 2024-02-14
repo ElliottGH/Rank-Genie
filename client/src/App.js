@@ -1,6 +1,8 @@
 import logo from "./logo.svg";
 import "./App.css";
 import React, { useState, useEffect } from "react";
+import BarChart from './components/BarChart';
+import {UserData} from './Data' // Replace this with the connection to the database/dataset that will be represented by graphs
 
 function App() {
   const [data, setData] = useState("");
@@ -20,6 +22,17 @@ function App() {
   //)
 
   //}, [])
+  
+    // //Below is a state for UserData, will hold the data formatted for the chart (bar chart for now)
+  // const [UserData, setUserData] = useState({
+  //   //labels is a list of all labels that represent each bar in the chart
+  //   labels: UserData.map((data) => data.year),     //will create a new array that will contain, in this case, year for each element.Loops through dataset to get each 
+  //   datasets: [{
+  //     label: "Users ____",   //What does this piece of data represent?
+  //     data: UserData.map((data) => data.user____),
+  //     backgroundColor: ["red", "blue"]  //Changes bar colors, can use rgba and hexadecimal as well
+  //   }]  
+  // })
 
   // Temporary backend call for demo
   const handleClick = async () => {
