@@ -3,6 +3,7 @@ from flask import Flask, render_template, request, redirect, url_for #pip instal
 #Library to connect MySQL db and insert csv file data
 import mysql.connector #pip install mysql-connector-python
 from mysql.connector import Error
+
 import pandas as pd #pip install pandas
 
 import os
@@ -28,9 +29,6 @@ except Error as e:
 
 myCursor = mydb.cursor()
 myCursor.execute("SHOW DATABASES")
-
-for x in myCursor:
-     print(x)
 
 ##IMPORTANT REMINDER TO FIX LATER
 ##this python/flask things sends to localhost on port 5000 where react is using port 3000
@@ -114,3 +112,4 @@ parseCSV("dataset.csv")
 
 if __name__ == '__main__':
     app.run(port = 5000)
+
