@@ -1,159 +1,211 @@
-
 import numpy as np
 import pandas as pd
-import matplotlib as plt
+import matplotlib.pyplot as plt
 import re
+import xgboost as xgb
 
-from sklearn.model_selection import train_test_split
+from abc import ABC
+
+# Sklearn Libraries
+from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.pipeline import Pipeline
-from sklearn.linear_model import LinearRegression, Ridge, LogisticRegression
+from sklearn.linear_model import LinearRegression, Ridge, LogisticRegression, RidgeClassifierCV, RidgeClassifier
 from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import make_scorer, mean_absolute_error, r2_score, mean_squared_error, accuracy_score, precision_score, confusion_matrix
+from sklearn.metrics import make_scorer, mean_absolute_error, r2_score, mean_squared_error, accuracy_score, precision_score, confusion_matrix, roc_curve, roc_auc_score
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.decomposition import PCA
 
-from google.colab import drive
-drive.mount('/content/drive')
+class DataParser():
 
-def is_valid_ip(address):
+    def __init__(self, reg_data, pay_data, ip_data, reg_drop_list):
+       self.reg_data = reg_data
+       self.pay_data = pay_data
+       self.ip_data = ip_data
+       self._synthesize_data(reg_drop_list)
 
-    address = f"{address}"
-    # Split the address into blocks
-    blocks = address.split('.')
+    def _synthesize_data(self, reg_drop_list):
 
-    # Check if there are exactly 4 blocks
-    if len(blocks) != 4:
-        return False
-
-    # Check each block
-    for block in blocks:
-        # Check if the block is a valid integer
-        if not block.isdigit():
-            return False
-
-        # Check if the integer is in the valid range (0-255)
-        num = int(block)
-        if not (0 <= num <= 255):
-            return False
-
-        # Check if the block has the correct length (1, 2, or 3 digits)
-        if len(block) < 1 or len(block) > 3:
-            return False
-
-        # Check for leading zeros in blocks with more than one digit
-        if len(block) > 1 and block[0] == '0':
-            return False
-
-    return True
-def preprocess(reg_data, pay_data):
-    # Clean Up User registration data
-    reg_data['id'] = reg_data['CreatedDate']
-    reg_data = reg_data.drop(['CreatedDate', 'Billing to IP Distance (Miles)', 'BillingAge', 'Billing Name to Reg Name Similarity', 'Campaign', 'utm_term', 'EmailAge', 'ExpectedVolumeFrequency'], axis=1)
-    reg_data['Registered_IP'] = reg_data['Registered_IP'].apply(lambda row: False if not is_valid_ip(row) else row)
-    reg_data = reg_data[reg_data['Registered_IP'] != False].reset_index(drop=True)
-
-    # dummy code UserType
-    reg_data['UserType'].fillna('Unknown', inplace=True)
-    reg_data = pd.get_dummies(reg_data, columns=['UserType'], prefix='UserType')
-
-    # Clean up Payment data
-    pay_data.dropna(how='all', inplace=True)
-
-    # Fixing variable types
-    reg_data['id']=reg_data['id'].astype(int)
-    pay_data['id']=pay_data['id'].astype(int)
-
-    merged_df = pd.merge(reg_data, pay_data, on='id', how='inner')
-
-    merged_df.rename(columns={'UserAgent': 'DeviceName'}, inplace=True)
+        # Clean Up User registration data
+        self.reg_data['id'] = self.reg_data['CreatedDate']
+        drop_list = reg_drop_list
+        drop_list.append('CreatedDate')
+        self.reg_data = self.reg_data.drop(drop_list, axis=1)
+        # reg_data = reg_data.drop(['CreatedDate', 'Billing to IP Distance (Miles)', 'BillingAge', 'Billing Name to Reg Name Similarity', 'Campaign', 'utm_term', 'EmailAge', 'EmailVerification', 'ISPState', 'ISPCity', 'Tw_CallerType', 'Tw_Carrier', 'Tw_Type'], axis=1)
+        self.reg_data['Registered_IP'] = self.reg_data['Registered_IP'].apply(lambda row: False if not self.is_valid_ip(row) else row)
+        self.reg_data = self.reg_data[self.reg_data['Registered_IP'] != False].reset_index(drop=True)
 
 
-    def extract_device_name(cell_value):
+        # Clean up Payment data
+        self.pay_data.dropna(how='all', inplace=True)
+
+        # Fixing variable types and remove invalud characters
+        self.reg_data['id']= self.reg_data['id'].astype(int)
+        self.pay_data['id']= self.pay_data['id'].astype(int)
+        self.reg_data['RiskScore']= self.reg_data['RiskScore'].astype(float)
+
+        self.merged_df = pd.merge(self.reg_data, self.pay_data, on='id', how='inner')
+        #self.merged_df = pd.merge(self.merged_df, self.ip_data, on='id', how='inner')
+        self.merged_df.rename(columns={'UserAgent': 'DeviceName'}, inplace=True)
+
+    def get_amount_code(self, amount):
+        encoded_values = {
+        "0": 0,
+        "Under $100": 1,
+        "$101 - $200": 2,
+        "$201 - $500": 3,
+        "$501 - $999": 4,
+        "$1000": 5,
+        "$1001 - $1999": 6,
+        "$2000": 7,
+        "$2000+": 8
+
+       }
+
+        return encoded_values[amount]
+
+    def dummy_encode(self, dummy_list):
+         self.merged_df[dummy_list].apply(lambda col: col.fillna('Unknown'))
+         self.merged_df = pd.get_dummies(self.merged_df, columns=dummy_list)
+
+
+    def extract_device_name(self, cell_value):
         pattern = r'"deviceName":"(.*?)(?:"|$)'
         match = re.search(pattern, str(cell_value))
         return match.group(1).strip() if match else None
 
 
-    merged_df['DeviceName'] = merged_df['DeviceName'].apply(extract_device_name)
+    def validate_ip_location(self, ip):
+         try:
+            ipwhois_result = IPWhois(ip).lookup_rdap()
+            country = ipwhois_result.get('asn_country_code')
+            return country
+         except Exception as e:
+            print(f"Error fetching data for IP {ip}: {e}")
+            return None
 
-    # dummy code DeviceName
-    merged_df['DeviceName'].fillna('Unknown', inplace=True)
-    merged_df = pd.get_dummies(merged_df, columns=['DeviceName'], prefix='DeviceName')
+    def replace_abbrev(self, abbrev):
+      abbrev_to_country = json.load(country_abbrev)
+      abv = str(abbrev)
+      return abbrev_to_country.get(abv)
 
-    # binary encode Amount
-    merged_df['Amount'].fillna(0, inplace=True)
-    merged_df['Amount'] = merged_df['Amount'].apply(lambda x: 0 if x == 0 else 1)
+    def is_valid_ip(self, address):
 
-    # categorize Joining Reasons
-    merged_df['JoiningReason'].fillna("None", inplace=True)
-    merged_df['JoiningReason'] = merged_df['JoiningReason'].apply(lambda x: x if x in ["Real Estate Wholesaler/Investor/REI", "Advertising/Marketing Agency", "Political", "Call Center/Market Research", "None"] else "Others")
+        address = f"{address}"
+        # Split the address into blocks
+        blocks = address.split('.')
 
-    # dummy code JoiningReason
-    merged_df['JoiningReason'].fillna('Unknown', inplace=True)
-    merged_df = pd.get_dummies(merged_df, columns=['JoiningReason'], prefix='JoiningReason')
+        # Check if there are exactly 4 blocks
+        if len(blocks) != 4:
+            return False
 
-    # dummy code ISPCountryName
-    merged_df['ISPCountryName'].fillna('Unknown', inplace=True)
-    merged_df = pd.get_dummies(merged_df, columns=['ISPCountryName'], prefix='ISPCountryName')
+        for block in blocks:
+            if not block.isdigit():
+                return False
 
-    return merged_df
+            # Check if the integer is in the valid range (0-255)
+            num = int(block)
+            if not (0 <= num <= 255):
+                return False
 
-regdf = pd.read_csv("/content/drive/MyDrive/CapstoneProject(Ranking_System)/The Model OwO/UserRegDataset.csv")
-paydf = pd.read_csv("/content/drive/MyDrive/CapstoneProject(Ranking_System)/The Model OwO/payments.csv")
+            # Check if the block has the correct length (1, 2, or 3 digits)
+            if len(block) < 1 or len(block) > 3:
+                return False
 
-#regdf_cleaned, paydf_cleaned = preprocess(regdf, paydf)
-preprocessed_df = preprocess(regdf, paydf)
-preprocessed_df.to_csv("Output.csv", index=None)
-preprocessed_df.head()
-# Using the risk score as the target variable
-def configure_linear_model(df):
-    y = df['Amount']
-    X = df.drop(['Amount', 'Registered_IP', 'EmailVerification', 'ISPState', 'ISPCity', 'ISPName','Tw_CallerType', 'Tw_Carrier', 'Tw_Type', 'id'], axis=1)
+            # Check for leading zeros in blocks with more than one digit
+            if len(block) > 1 and block[0] == '0':
+                return False
 
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=1)
+        return True
 
-    return X_train, X_test, y_train, y_test
+class Genie(ABC):
 
-#create pipeline that standardizes the features and fits a linear regression model
-model = Pipeline([
-    ('scaler', StandardScaler()),
-    ('regressor', Ridge())
-])
+    def __init__(self, reg_csv_data, pay_csv_data):
+      self.load_train_data(reg_csv_data, pay_csv_data)
+      self.preprocess()
 
-X_train, X_test, y_train, y_test = configure_linear_model(preprocessed_df)
+    def load_train_data(self, reg_csv_data, pay_csv_data):
+      link_to_ipdata = None # Add a path to andrew's code
+
+      regdf = pd.read_csv(reg_csv_data)
+      paydf = pd.read_csv(pay_csv_data)
+      #ip_data = pd.read_csv(link_to_ipdata)
+      self.data = DataParser(regdf, paydf, None, ['CreatedDate', 'ISPCity','ISPCountryName', 'ExpectedVolumeFrequency', 'ISPName', 'utm_term', 'BillingAge', 'EmailVerification', 'Tw_Carrier'])
+
+    def preprocess(self):
+      self.data.merged_df['DeviceName'] = self.data.merged_df['DeviceName'].apply(self.data.extract_device_name)
+
+      # binary encode Amount
+      self.data.merged_df['Amount'].fillna("0", inplace=True)
+      self.data.merged_df['Amount'] = self.data.merged_df['Amount'].apply(lambda x: self.data.get_amount_code(x))
+
+      # categorize Joining Reasons
+      self.data.merged_df['JoiningReason'].fillna("None", inplace=True)
+      self.data.merged_df['JoiningReason'] = self.data.merged_df['JoiningReason'].apply(lambda x: x if x in ["Real Estate Wholesaler/Investor/REI", "Advertising/Marketing Agency", "Political", "Call Center/Market Research", "None"] else "Others")
+
+      # Dummy Encode
+      self.data.dummy_encode(['UserType', 'DeviceName', 'JoiningReason', 'ISPState', 'Campaign', 'Tw_CallerType', 'Tw_Type'])
+      self.data.merged_df['EmailAge'].fillna('-1', inplace=True)
+      self.data.merged_df['EmailAge'] = self.data.merged_df['EmailAge'].astype(int)
+      self.data.merged_df['Billing to IP Distance (Miles)'].fillna('-1', inplace=True)
+      self.data.merged_df['Billing to IP Distance (Miles)'] = self.data.merged_df['Billing to IP Distance (Miles)'].astype(int)
+
+      self.dataframe = self.data.merged_df
+
+    def split_data(self):
+      y = self.dataframe['Amount']
+      X = self.dataframe.drop(['Amount', 'Registered_IP', 'id'], axis=1)
+
+      X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=1)
+
+      self.X_train = X_train
+      self.X_test = X_test
+      self.y_train = y_train
+      self.y_test = y_test
+
+    def evaluate_model(self):
+      scaler = StandardScaler()
+      X_trainStan = scaler.fit_transform(self.X_train)
+      X_testStan = scaler.transform(self.X_test)
+      # fit the model on the training data
+      self.model.fit(X_trainStan, self.y_train)
+
+      # make predictions for training and test data
+      yTrainPred = self.model.predict(X_trainStan)
+      yTestPred = self.model.predict(X_testStan)
+
+      # calculate R2 score for training and test data
+      r2Train = r2_score(self.y_train, yTrainPred)
+      r2Test = r2_score(self.y_test, yTestPred)
+
+      # calculate MAE for training and test data
+      MAE_Train = mean_absolute_error(self.y_train, yTrainPred)
+      MAE_Test = mean_absolute_error(self.y_test, yTestPred)
+
+      # TODO: figure out how to do precision and accuracy and confusion matrix if necessary
+
+      confusionMatrix = confusion_matrix(self.y_test, yTestPred)
+
+      print("R2 Score (Training):", r2Train)
+      print("R2 Score (Testing):", r2Test, "\n")
+
+      print("MAE Score (Training):", MAE_Train)
+      print("MAE Score (Testing):", MAE_Test, "\n")
+
+      print("Confusion Matrix:\n", confusionMatrix, "\n")
 
 
-#fit the model on the training data
-model.fit(X_train, y_train)
+class XGBoostGenie(Genie):
 
-#make predictions for training and test data
-yTrainPred = model.predict(X_train)
-yTestPred = model.predict(X_test)
+    def __init__(self, reg_csv_data, pay_csv_data):
+      super().__init__(reg_csv_data, pay_csv_data)
+      self.model = xgModel = xgb.XGBClassifier(objective ='binary:logistic', colsample_bytree = 0.3, learning_rate = 0.1,max_depth = 5, alpha = 10, n_estimators = 300)
 
-#calculate training/test precision
-#precisionTrain = precision_score(y_train, yTrainPred)
-#precisionTest = accuracy_score(y_test, yTestPred)
 
-#calculate training/test accuracy
-#accuracyTrain = precision_score(y_train, yTrainPred)
-#accuracyTest = accuracy_score(y_test, yTestPred)
+class RandomForestGenie(Genie):
 
-#calculate R2 score for training and test data
-r2Train = r2_score(y_train, yTrainPred)
-r2Test = r2_score(y_test, yTestPred)
+    def __init__(self, reg_csv_data, pay_csv_data):
+      super().__init__(reg_csv_data, pay_csv_data)
+      self.model = RandomForestClassifier(n_estimators=50, random_state=42)
 
-MAE_Train = mean_absolute_error(y_train, yTrainPred)
-MAE_Test = mean_absolute_error(y_test, yTestPred)
-
-#print("Training Precision:", precisionTrain)
-#print("Testing Precision:", precisionTrain)
-
-#print("\nTraining Accuracy:", accuracyTest)
-#print("Testing Accuracy:", accuracyTest)
-
-print("\nR2 Score (Training):", r2Train)
-print("R2 Score (Testing):", r2Test)
-
-print("\nMAE Score (Training):", MAE_Train)
-print("MAE Score (Testing):", MAE_Test)
-
-# print("Decision Tree Confusion Matrix:")
-# print(confusion_matrix(y_test, yTestPred))
+class RidgeRegressionGenie(Genie):
+    pass
