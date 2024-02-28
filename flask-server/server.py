@@ -53,16 +53,42 @@ def get_db_connection():
 ## Use registration data and payment data files (both) to train the model
 @app.route('/train', methods=['POST'])
 def train():
-    xgboostmodel = XGBoostGenie('regdata', 'paydata')
-    randomforestmodel = RandomForestGenie('regdata', 'paydata')
-
-    xgboostmodel.preprocess()
-    randomforestmodel.preprocess()
+    # Check if the files are part of the request
+    if 'regdata' not in request.files or 'paydata' not in request.files:
+        return 'Missing files', 400
+    
+    # Get the files from the request
+    file_regdata = request.files['regdata']
+    file_paydata = request.files['paydata']
+    
+    # Convert files to pandas DataFrames
+    df_regdata = pd.read_csv(file_regdata)
+    df_paydata = pd.read_csv(file_paydata)
+    
+    # Initialize and train your models
+    xgboostmodel = XGBoostGenie(df_regdata, df_paydata)
+    randomforestmodel = RandomForestGenie(df_regdata, df_paydata)
+    
+    xgboostmodel.preprocess()  # Assuming preprocess includes training
+    randomforestmodel.preprocess()  # Assuming preprocess includes training
+    
+    # You might want to return a success message or any relevant information
+    return 'Model trained successfully', 200
 
 
 @app.route('/predict', methods=['POST'])
 def predict():
-    prediction = xgboostmodel.model.predict()
+    if 'data' not in request.files:
+        return 'No file provided', 400
+    
+    file = request.files['data']
+    df = pd.read_csv(file)
+    
+    # Assuming xgboostmodel is globally defined and already trained
+    prediction = xgboostmodel.predict(df)  # Ensure predict method is defined and works with the DataFrame
+    
+    # Format the prediction into a response, for example, converting to JSON
+    return jsonify({'prediction': prediction.tolist()}), 200
 
 
 @app.route('/login', methods=['POST'])
