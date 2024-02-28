@@ -8,12 +8,16 @@ import os
 from os.path import join, dirname, realpath
 import traceback
 
+from statics.model.genie import RandomForestGenie, XGBoostGenie
+
 app = Flask(__name__)  # Create flask app
 app.config['DEBUG'] = True  # Enable Debug
 UPLOAD_FOLDER = 'statics/uploads'  
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 # Temporary - convert secret key from hex (we can store this in a config or env file later to make it more hidden)
 app.secret_key = bytes.fromhex('5ea50d792c8454a7f52d129e9f987e88ae7f9e203e9fe9a3')
+
+global xgboostmodel, randomforestmodel
 
 # Ensure the upload directory exists and just make the file if it doesn't
 if not os.path.exists(app.config['UPLOAD_FOLDER']):
@@ -45,6 +49,21 @@ def get_db_connection():
         database="genie",
         buffered=True
     )
+
+## Use registration data and payment data files (both) to train the model
+@app.route('/train', methods=['POST'])
+def train():
+    xgboostmodel = XGBoostGenie('regdata', 'paydata')
+    randomforestmodel = RandomForestGenie('regdata', 'paydata')
+
+    xgboostmodel.preprocess()
+    randomforestmodel.preprocess()
+
+
+@app.route('/predict', methods=['POST'])
+def predict():
+    prediction = xgboostmodel.model.predict()
+
 
 @app.route('/login', methods=['POST'])
 def login():
@@ -104,23 +123,6 @@ def index():
     # return render_template('index.html')
     return "trying this out"
 
-@app.route('/upload', methods=['POST'])
-def upload_file():
-    # Check if the post request has the file part
-    if 'file' not in request.files:
-        return jsonify({"error": "No file part"}), 400
-    file = request.files['file']
-    # If the user does not select a file, the browser submits an
-    # empty file without a filename.
-    if file.filename == '':
-        return jsonify({"error": "No selected file"}), 400
-    if file:
-        filename = secure_filename(file.filename)
-        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-        file.save(filepath)
-        # Call parseCSV
-        parseCSV(filepath)
-        return jsonify({"message": "File successfully uploaded and parsed"}), 200
 
 #I think this needs to be combined with the temporary backend in App.js to work properly.
 #Parses the given CSV file

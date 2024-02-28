@@ -18,50 +18,8 @@ function App() {
   const [userName, setUserName] = useState("User"); // Simulate logged-in user name
   const [activeTab, setActiveTab] = useState("upload"); // 'upload' or 'files'
 
-  // (Upload to DB)
-  const uploadFile = (file) => {
-    let formData = new FormData();
-    formData.append("file", file);
-
-    fetch("/upload", {
-      method: "POST",
-      body: formData,
-    })
-      .then((response) => response.json())
-      .then((data) => {
-        console.log(data);
-      })
-      .catch((error) => {
-        console.error("Error:", error);
-      });
-  };
-
-  // (Upload to site)
-  const handleUpload = async () => {
-    if (!selectedFile) {
-      alert("Please select a file first!");
-      return;
-    }
-
-    const formData = new FormData();
-    formData.append("file", selectedFile);
-
-    try {
-      const response = await fetch("http://localhost:5000/upload", {
-        method: "POST",
-        body: formData,
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        console.log(result.message);
-      } else {
-        console.error("Upload failed");
-      }
-    } catch (error) {
-      console.error("Error uploading the file", error);
-    }
-  };
+  // Straight to model
+  const handlePredict = async () => {};
 
   const handleTabSwitch = (tabName) => {
     setActiveTab(tabName);
@@ -263,10 +221,10 @@ function App() {
                         <p className="bold-header">Selected File: {fileName}</p>
                         <div className="file-header">
                           <button
-                            onClick={handleUpload}
+                            onClick={handlePredict}
                             className="basic-button"
                           >
-                            Upload
+                            Predict
                           </button>
                           <button
                             className="basic-button"
