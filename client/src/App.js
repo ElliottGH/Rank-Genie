@@ -1,12 +1,12 @@
 import "./App.css";
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { BrowserRouter as Router, Route, Routes, Link } from "react-router-dom";
 import Login from "./Login";
+import Admin from "./Admin";
 
 // import {UserData} from './Data' // Replace this with the connection to the database/dataset that will be represented by graphs
 
 function App() {
-  const [data, setData] = useState("");
   const [fileSelected, setFileSelected] = useState(null); // Is there a file selected?
   const [selectedFile, setSelectedFile] = useState(null); // What is the selected file
   const [fileName, setFileName] = useState(""); // File properties
@@ -15,11 +15,46 @@ function App() {
   const [fileLastModified, setFileLastModified] = useState("---");
   const [fileExtension, setFileExtension] = useState("---");
   const [isLoggedIn, setIsLoggedIn] = useState(false); // Simulate authentication state
-  const [userName, setUserName] = useState("User"); // Simulate logged-in user name
   const [activeTab, setActiveTab] = useState("upload"); // 'upload' or 'files'
+  const [predictionResults, setPredictionResults] = useState([]);
+  const [predictionError, setPredictionError] = useState("");
+
+  const fileInputRef = useRef(null);
 
   // Straight to model
-  const handlePredict = async () => {};
+  const handlePredict = async () => {
+    if (!selectedFile) {
+      alert("Please select a file first!");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("file", selectedFile);
+    console.log("Sending file to server:", selectedFile.name);
+
+    try {
+      const response = await fetch("http://localhost:5000/predict", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        setPredictionResults(result.prediction);
+        setPredictionError(""); // Clear old errors
+        console.log(result.prediction);
+      } else {
+        console.error("Prediction failed");
+        const errorResult = await response.json();
+        setPredictionError(
+          `Error: ${errorResult.error || "Prediction failed"}`
+        );
+      }
+    } catch (error) {
+      console.error("Error during prediction", error);
+      setPredictionError(`Error: ${error.message || "Failed to fetch"}`);
+    }
+  };
 
   const handleTabSwitch = (tabName) => {
     setActiveTab(tabName);
@@ -34,6 +69,7 @@ function App() {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + " " + sizes[i];
   };
 
+  // Adding a file and its properties to the page
   const handleFileSelect = (event) => {
     if (event.target.files && event.target.files.length > 0) {
       const file = event.target.files[0];
@@ -56,6 +92,29 @@ function App() {
       setFileType("---");
       setFileLastModified("---");
       setFileExtension("---");
+    }
+    setPredictionError("");
+  };
+
+  // Clearing a file from the page
+  const handleFileClear = () => {
+    const isConfirmed = window.confirm(
+      "Are you sure you want to clear the uploaded file?"
+    );
+    if (isConfirmed) {
+      setFileSelected(false);
+      setSelectedFile(null);
+      setFileName("");
+      setFileSize("---");
+      setFileType("---");
+      setFileLastModified("---");
+      setFileExtension("---");
+      setPredictionError("");
+
+      // Reset the file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
     }
   };
 
@@ -106,7 +165,7 @@ function App() {
                   Logout
                 </a>
                 {" • "}
-                <Link to="/" className="username-link">
+                <Link to="/admin" className="username-link">
                   Admin
                 </Link>
                 <div className="avatar-container">
@@ -121,6 +180,7 @@ function App() {
           </nav>
         </header>
         <Routes>
+          <Route path="/admin" element={<Admin />} />
           <Route
             path="/login"
             element={
@@ -158,6 +218,7 @@ function App() {
                             style={{ display: "none" }}
                             id="file-input"
                             accept=".csv"
+                            ref={fileInputRef}
                           />
                           <div
                             className="file-input-container"
@@ -218,11 +279,24 @@ function App() {
                   <div className="right-panel-container">
                     {fileSelected && (
                       <>
-                        <p className="bold-header">Selected File: {fileName}</p>
+                        <p className="bold-header">
+                          Selected File: {fileName}
+                          <span
+                            className="delete-icon-container"
+                            onClick={handleFileClear}
+                          >
+                            <img
+                              src="images/delete.png"
+                              alt="Delete"
+                              className="delete-icon-image"
+                            />
+                          </span>
+                        </p>
                         <div className="file-header">
                           <button
                             onClick={handlePredict}
                             className="basic-button"
+                            type="button"
                           >
                             Predict
                           </button>
@@ -238,9 +312,35 @@ function App() {
                             </p>
                           )}
                         </div>
+                        <div className="prediction-results">
+                          {predictionError && (
+                            <p className="error-message">{predictionError}</p>
+                          )}
+                          {predictionResults.length > 0 && (
+                            <>
+                              <p className="bold-header">Prediction Results</p>
+                              <table className="file-details-table">
+                                <thead>
+                                  <tr>
+                                    <th>ID</th>
+                                    <th>Prediction</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {predictionResults.map((result, index) => (
+                                    <tr key={index}>
+                                      <td>{index}</td>
+                                      <td>{result}</td>{" "}
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </>
+                          )}
+                        </div>
                       </>
                     )}
-                    {/* Additional right panel content */}
+                    {/* CHART.JS */}
                   </div>
                 </aside>
               </div>

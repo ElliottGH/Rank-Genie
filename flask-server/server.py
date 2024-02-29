@@ -1,4 +1,5 @@
 from flask import Flask, render_template, jsonify, request, redirect, url_for, session
+from flask_cors import CORS
 from werkzeug.security import check_password_hash
 from werkzeug.utils import secure_filename
 from mysql.connector import Error
@@ -13,6 +14,8 @@ import joblib
 from statics.model.genie import RandomForestGenie, XGBoostGenie
 
 app = Flask(__name__)  # Create flask app
+CORS(app)
+
 app.config['DEBUG'] = True  # Enable Debug
 UPLOAD_FOLDER = 'statics/uploads'  
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
@@ -53,43 +56,62 @@ def get_db_connection():
 ## Use registration data and payment data files (both) to train the model
 @app.route('/train', methods=['POST'])
 def train():
-    # Check if the files are part of the request
+    # Make sure files are part of the request
     if 'regdata' not in request.files or 'paydata' not in request.files:
-        return 'Missing files', 400
+        return jsonify({'error': 'Missing one or more files'}), 400
     
-    # Get the files from the request
+    # Get files from the request
     file_regdata = request.files['regdata']
     file_paydata = request.files['paydata']
-    
-    # Convert files to pandas DataFrames
-    df_regdata = pd.read_csv(file_regdata)
-    df_paydata = pd.read_csv(file_paydata)
-    
-    # Initialize and train your models
-    xgboostmodel = XGBoostGenie(df_regdata, df_paydata)
-    randomforestmodel = RandomForestGenie(df_regdata, df_paydata)
-    
-    xgboostmodel.preprocess()  # Assuming preprocess includes training
-    randomforestmodel.preprocess()  # Assuming preprocess includes training
 
-    joblib.dump(xgboostmodel, 'statics/xgboost_model.pkl')    
-    joblib.dump(randomforestmodel, 'statics/randomforest_model.pkl')
-    
-    # You might want to return a success message or any relevant information
-    return 'Model trained successfully', 200
+    try:
+        df_regdata = pd.read_csv(file_regdata)
+        df_paydata = pd.read_csv(file_paydata)
+        
+        xgboostmodel = XGBoostGenie(df_regdata, df_paydata)
+        randomforestmodel = RandomForestGenie(df_regdata, df_paydata)
+        
+        xgboostmodel.preprocess()
+        randomforestmodel.preprocess()
 
-
+        joblib.dump(xgboostmodel, 'statics/xgboost_model.pkl')    
+        joblib.dump(randomforestmodel, 'statics/randomforest_model.pkl')
+        
+        return jsonify({'message': 'Model trained successfully'}), 200
+    except Exception as e:
+        app.logger.error('Failed to train model: {}'.format(e))
+        return jsonify({'error': 'Failed to train model', 'details': str(e)}), 500
 
 
 @app.route('/predict', methods=['POST'])
 def predict():
-    xgboost_model = joblib.load('statics/xgboost_model.pkl')
-    # A form to upload new_user_data.csv will need to be created if it already doesn't exist
-    data_to_predict = pd.read_csv('statics/upload/new_user_data.csv')
-    scaler = StandardScaler()
-    x_standardized_data = scalar.fit_transform(data_to_predict)
-    y_pred = xgboostmodel.model.predict(data_to_predict)
-    print(y_pred)
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file part'}), 400
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'error': 'No selected file'}), 400
+    
+    # Secure the filename and save the file to server
+    filename = secure_filename(file.filename)
+    file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+    file.save(file_path)
+
+    try:
+        # load model
+        xgboost_model = joblib.load('statics/xgboost_model.pkl')
+
+        data_to_predict = pd.read_csv(file_path)
+        scaler = StandardScaler()
+        x_standardized_data = scaler.transform(data_to_predict)
+        y_pred = xgboost_model.predict(x_standardized_data)
+        os.remove(file_path)
+        return jsonify({"prediction": y_pred.tolist()}), 200
+    except FileNotFoundError:
+        os.remove(file_path)
+        return jsonify({"error": "Model file not found. Please train the model before attempting to predict."}), 500
+    except Exception as e:
+        os.remove(file_path)
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route('/login', methods=['POST'])
@@ -98,40 +120,31 @@ def login():
     password = request.form['password']
     conn = get_db_connection()
     cursor = conn.cursor()
-
-    print(f"Attempting to log in user: {username}")  # Log the attempt
-
     try:
         query = "SELECT password FROM users WHERE username = %s"
-        print(f"Executing query: {query} with username: {username}")  # Log the query and the username
         cursor.execute(query, (username,))
         user = cursor.fetchone()  # Use the correct cursor variable name
 
         if user:
-            print(f"Fetched user hash for {username}: {user[0]}")  # Log fetched hash
             if check_password_hash(user[0], password):
-                print(f"User {username} authenticated successfully")  # Log success
                 return jsonify({"message": "Login successful"}), 200
             else:
-                print(f"Password check failed for user {username}")  # Log failure
                 return jsonify({"error": "Invalid credentials"}), 401
         else:
-            print(f"User {username} not found in database")  # Log user not found
             return jsonify({"error": "Invalid credentials"}), 401
     except Error as e:
         print(f"Database error while logging in user {username}: {e}")
-        traceback.print_exc()  # Print full traceback to understand the exception better
+        traceback.print_exc()
         return jsonify({"error": "Database error occurred"}), 500
     except Exception as e:
         print(f"General error while logging in user {username}: {e}")
-        traceback.print_exc()  # Print full traceback to understand the exception better
+        traceback.print_exc()
         return jsonify({"error": "An error occurred"}), 500
     finally:
         if cursor is not None:
             cursor.close()
         if conn is not None:
             conn.close()
-            print(f"Database connection closed for user {username}")
 
 @app.route('/logout')
 def logout():
@@ -147,7 +160,6 @@ def backend():
 @app.route('/')
 def index():
     #Sets HTML template
-    # return render_template('index.html')
     return "trying this out"
 
 
@@ -191,5 +203,5 @@ def parseCSV(filePath):
 # parseCSV("dataset.csv")
 
 if __name__ == '__main__':
-    app.run(port = 5000)
+    app.run(port=5000,debug=True)
 
