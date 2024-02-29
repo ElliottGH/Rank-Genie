@@ -1,12 +1,14 @@
 from flask import Flask, render_template, jsonify, request, redirect, url_for, session
 from werkzeug.security import check_password_hash
 from werkzeug.utils import secure_filename
-import mysql.connector
 from mysql.connector import Error
+import mysql.connector
+from os.path import join, dirname, realpath
+
 import pandas as pd
 import os
-from os.path import join, dirname, realpath
 import traceback
+import joblib
 
 from statics.model.genie import RandomForestGenie, XGBoostGenie
 
@@ -16,8 +18,6 @@ UPLOAD_FOLDER = 'statics/uploads'
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 # Temporary - convert secret key from hex (we can store this in a config or env file later to make it more hidden)
 app.secret_key = bytes.fromhex('5ea50d792c8454a7f52d129e9f987e88ae7f9e203e9fe9a3')
-
-global xgboostmodel, randomforestmodel
 
 # Ensure the upload directory exists and just make the file if it doesn't
 if not os.path.exists(app.config['UPLOAD_FOLDER']):
@@ -71,24 +71,25 @@ def train():
     
     xgboostmodel.preprocess()  # Assuming preprocess includes training
     randomforestmodel.preprocess()  # Assuming preprocess includes training
+
+    joblib.dump(xgboostmodel, 'statics/xgboost_model.pkl')    
+    joblib.dump(randomforestmodel, 'statics/randomforest_model.pkl')
     
     # You might want to return a success message or any relevant information
     return 'Model trained successfully', 200
 
 
+
+
 @app.route('/predict', methods=['POST'])
 def predict():
-    if 'data' not in request.files:
-        return 'No file provided', 400
-    
-    file = request.files['data']
-    df = pd.read_csv(file)
-    
-    # Assuming xgboostmodel is globally defined and already trained
-    prediction = xgboostmodel.predict(df)  # Ensure predict method is defined and works with the DataFrame
-    
-    # Format the prediction into a response, for example, converting to JSON
-    return jsonify({'prediction': prediction.tolist()}), 200
+    xgboost_model = joblib.load('statics/xgboost_model.pkl')
+    # A form to upload new_user_data.csv will need to be created if it already doesn't exist
+    data_to_predict = pd.read_csv('statics/upload/new_user_data.csv')
+    scaler = StandardScaler()
+    x_standardized_data = scalar.fit_transform(data_to_predict)
+    y_pred = xgboostmodel.model.predict(data_to_predict)
+    print(y_pred)
 
 
 @app.route('/login', methods=['POST'])
