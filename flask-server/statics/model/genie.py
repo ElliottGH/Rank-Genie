@@ -210,7 +210,7 @@ class XGBoostGenie(Genie):
 
     def __init__(self, reg_csv_data, pay_csv_data):
       super().__init__(reg_csv_data, pay_csv_data)
-      self.model = xgModel = xgb.XGBClassifier(objective ='binary:logistic', colsample_bytree = 0.3, learning_rate = 0.1,max_depth = 5, alpha = 10, n_estimators = 300)
+      self.model = xgb.XGBClassifier(objective ='binary:logistic', n_estimators = 300)
 
 
 class RandomForestGenie(Genie):
