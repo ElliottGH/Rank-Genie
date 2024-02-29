@@ -50,14 +50,14 @@ class DataParser():
     def get_amount_code(self, amount):
         encoded_values = {
         "0": 0,
-        "Under $100": 1,
-        "$101 - $200": 2,
-        "$201 - $500": 3,
-        "$501 - $999": 4,
-        "$1000": 5,
-        "$1001 - $1999": 6,
-        "$2000": 7,
-        "$2000+": 8
+        "Under $100": 0,
+        "$101 - $200": 0,
+        "$201 - $500": 0,
+        "$501 - $999": 0,
+        "$1000": 1,
+        "$1001 - $1999": 1,
+        "$2000": 1,
+        "$2000+": 1
 
        }
 
@@ -181,7 +181,13 @@ class Genie(ABC):
       MAE_Train = mean_absolute_error(self.y_train, yTrainPred)
       MAE_Test = mean_absolute_error(self.y_test, yTestPred)
 
-      # TODO: figure out how to do precision and accuracy and confusion matrix if necessary
+      # accuracy
+      accuracy_Train = accuracy_score(self.y_train, yTrainPred)
+      accuracy_Test = accuracy_score(self.y_test, yTestPred)
+
+      # precision
+      precision_Train = precision_score(self.y_train, yTrainPred)
+      precision_Test = precision_score(self.y_test, yTestPred)
 
       confusionMatrix = confusion_matrix(self.y_test, yTestPred)
 
@@ -190,6 +196,12 @@ class Genie(ABC):
 
       print("MAE Score (Training):", MAE_Train)
       print("MAE Score (Testing):", MAE_Test, "\n")
+
+      print("Accuracy Score (Training):", accuracy_Train)
+      print("Accuracy Score (Testing):", accuracy_Test, "\n")
+
+      print("Precision Score (Training):", precision_Train)
+      print("Precision Score (Testing):", precision_Test, "\n")
 
       print("Confusion Matrix:\n", confusionMatrix, "\n")
 
