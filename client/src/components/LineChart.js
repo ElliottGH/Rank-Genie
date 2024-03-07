@@ -1,18 +1,18 @@
-// src/components/PieChart.js
+// src/components/LineChart.js
 import React from "react";
-import { Bar } from "react-chartjs-2";
+import { Line } from "react-chartjs-2";
 
-function BarChart({ chartData }) {
+function LineChart({ chartData }) {
   return (
     <div className="chart-container">
       <h2 style={{ textAlign: "center" }}></h2>
-      <Bar
+      <Line
         data={chartData}
         options={{
           plugins: {
             title: {
               display: true,
-              text: "BAR CHART"
+              text: "LINE CHART"
             }
           }
         }}
@@ -20,4 +20,4 @@ function BarChart({ chartData }) {
     </div>
   );
 }
-export default BarChart;
+export default LineChart;
