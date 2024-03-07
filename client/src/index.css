@@ -288,10 +288,10 @@ footer p {
   background-color: #f8f8f8;
 }
 
-.login-prompt {
+.extralight-header {
   color: grey;
   font-style: italic;
-  text-align: right;
+  text-align: left;
   margin-left: 20px;
   font-size: 0.8em;
 }
@@ -318,4 +318,17 @@ footer p {
   display: flex;
   justify-content: space-between;
   margin: 20px;
+}
+
+.results-container {
+  display: flex;
+}
+
+.prediction-results {
+  width: 260px;
+}
+
+.chart-results {
+  flex-grow: 1;
+  padding-left: 20px;
 }

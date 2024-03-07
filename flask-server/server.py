@@ -5,7 +5,11 @@ from werkzeug.utils import secure_filename
 from mysql.connector import Error
 import mysql.connector
 from os.path import join, dirname, realpath
+from tempfile import NamedTemporaryFile
 
+from sklearn.preprocessing import StandardScaler
+
+import shutil
 import pandas as pd
 import os
 import traceback
@@ -59,26 +63,42 @@ def train():
     # Make sure files are part of the request
     if 'regdata' not in request.files or 'paydata' not in request.files:
         return jsonify({'error': 'Missing one or more files'}), 400
-    
-    # Get files from the request
+
+    # Save temporary files and get paths
     file_regdata = request.files['regdata']
     file_paydata = request.files['paydata']
+    temp_regdata = NamedTemporaryFile(delete=False)
+    temp_paydata = NamedTemporaryFile(delete=False)
+    file_regdata.save(temp_regdata.name)
+    file_paydata.save(temp_paydata.name)
 
     try:
-        df_regdata = pd.read_csv(file_regdata)
-        df_paydata = pd.read_csv(file_paydata)
-        
-        xgboostmodel = XGBoostGenie(df_regdata, df_paydata)
-        randomforestmodel = RandomForestGenie(df_regdata, df_paydata)
-        
-        xgboostmodel.preprocess()
-        randomforestmodel.preprocess()
+        # Model functions and stuff
+        xgboostmodel = XGBoostGenie(temp_regdata.name, temp_paydata.name)
+        randomforestmodel = RandomForestGenie(temp_regdata.name, temp_paydata.name)
+        xgboostmodel.split_data()
+        randomforestmodel.split_data()
+
+
+        xgboostmodel.evaluate_model()
+        randomforestmodel.evaluate_model()
 
         joblib.dump(xgboostmodel, 'statics/xgboost_model.pkl')    
         joblib.dump(randomforestmodel, 'statics/randomforest_model.pkl')
+
+        # Cleanup temp files
+        temp_regdata.close()
+        os.unlink(temp_regdata.name)
+        temp_paydata.close()
+        os.unlink(temp_paydata.name)
         
         return jsonify({'message': 'Model trained successfully'}), 200
     except Exception as e:
+        # Cleanup temp files
+        temp_regdata.close()
+        os.unlink(temp_regdata.name)
+        temp_paydata.close()
+        os.unlink(temp_paydata.name)
         app.logger.error('Failed to train model: {}'.format(e))
         return jsonify({'error': 'Failed to train model', 'details': str(e)}), 500
 
@@ -91,7 +111,6 @@ def predict():
     if file.filename == '':
         return jsonify({'error': 'No selected file'}), 400
     
-    # Secure the filename and save the file to server
     filename = secure_filename(file.filename)
     file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
     file.save(file_path)
@@ -102,8 +121,8 @@ def predict():
 
         data_to_predict = pd.read_csv(file_path)
         scaler = StandardScaler()
-        x_standardized_data = scaler.transform(data_to_predict)
-        y_pred = xgboost_model.predict(x_standardized_data)
+        x_standardized_data = scaler.fit_transform(data_to_predict)
+        y_pred = xgboost_model.model.predict(x_standardized_data)
         os.remove(file_path)
         return jsonify({"prediction": y_pred.tolist()}), 200
     except FileNotFoundError:
@@ -203,5 +222,6 @@ def parseCSV(filePath):
 # parseCSV("dataset.csv")
 
 if __name__ == '__main__':
+    app.logger.setLevel('DEBUG')
     app.run(port=5000,debug=True)
 

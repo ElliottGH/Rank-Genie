@@ -1,5 +1,5 @@
 import "./App.css";
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { BrowserRouter as Router, Route, Routes, Link } from "react-router-dom";
 import Login from "./Login";
 import Admin from "./Admin";
@@ -7,9 +7,10 @@ import Admin from "./Admin";
 // import {UserData} from './Data' // Replace this with the connection to the database/dataset that will be represented by graphs
 
 function App() {
+  // STATE HOOKS
   const [fileSelected, setFileSelected] = useState(null); // Is there a file selected?
   const [selectedFile, setSelectedFile] = useState(null); // What is the selected file
-  const [fileName, setFileName] = useState(""); // File properties
+  const [fileName, setFileName] = useState(""); // File properties v v v
   const [fileSize, setFileSize] = useState("---");
   const [fileType, setFileType] = useState("---");
   const [fileLastModified, setFileLastModified] = useState("---");
@@ -18,6 +19,24 @@ function App() {
   const [activeTab, setActiveTab] = useState("upload"); // 'upload' or 'files'
   const [predictionResults, setPredictionResults] = useState([]);
   const [predictionError, setPredictionError] = useState("");
+  // Search
+  const [searchID, setSearchID] = useState("");
+  const [showPrediction0, setShowPrediction0] = useState(true);
+  const [showPrediction1, setShowPrediction1] = useState(true);
+  const [filteredResults, setFilteredResults] = useState([]);
+
+  // Search and filters
+  useEffect(() => {
+    const filtered = predictionResults.filter((result) => {
+      const matchesID = searchID === "" || result.id.toString() === searchID;
+      const matchesPrediction =
+        (result.prediction === 0 && showPrediction0) ||
+        (result.prediction === 1 && showPrediction1);
+
+      return matchesID && matchesPrediction;
+    });
+    setFilteredResults(filtered);
+  }, [searchID, showPrediction0, showPrediction1, predictionResults]);
 
   const fileInputRef = useRef(null);
 
@@ -40,12 +59,16 @@ function App() {
 
       if (response.ok) {
         const result = await response.json();
-        setPredictionResults(result.prediction);
+        const results = result.prediction.map((prediction, index) => ({
+          id: index,
+          prediction,
+        }));
+        setPredictionResults(results);
         setPredictionError(""); // Clear old errors
-        console.log(result.prediction);
       } else {
         console.error("Prediction failed");
         const errorResult = await response.json();
+        setPredictionResults([]);
         setPredictionError(
           `Error: ${errorResult.error || "Prediction failed"}`
         );
@@ -94,6 +117,11 @@ function App() {
       setFileExtension("---");
     }
     setPredictionError("");
+    setPredictionResults([]);
+    setFilteredResults([]);
+    setSearchID("");
+    setShowPrediction0(true);
+    setShowPrediction1(true);
   };
 
   // Clearing a file from the page
@@ -110,6 +138,11 @@ function App() {
       setFileLastModified("---");
       setFileExtension("---");
       setPredictionError("");
+      setPredictionResults([]);
+      setFilteredResults([]);
+      setSearchID("");
+      setShowPrediction0(true);
+      setShowPrediction1(true);
 
       // Reset the file input
       if (fileInputRef.current) {
@@ -300,47 +333,83 @@ function App() {
                           >
                             Predict
                           </button>
-                          <button
-                            className="basic-button"
-                            disabled={!isLoggedIn}
-                          >
-                            Save
-                          </button>
-                          {!isLoggedIn && (
-                            <p className="login-prompt">
-                              Log in to save files to an account
-                            </p>
-                          )}
+                          <input
+                            type="text"
+                            placeholder="Filter by ID..."
+                            value={searchID}
+                            onChange={(e) => setSearchID(e.target.value)}
+                            style={{ marginLeft: "20px" }}
+                          />
+                          <label className="extralight-header">
+                            Only show predictions of&nbsp;
+                          </label>
+                          <label>
+                            0
+                            <input
+                              type="checkbox"
+                              checked={showPrediction0}
+                              onChange={() =>
+                                setShowPrediction0(!showPrediction0)
+                              }
+                            />
+                          </label>
+                          <label>
+                            1
+                            <input
+                              type="checkbox"
+                              checked={showPrediction1}
+                              onChange={() =>
+                                setShowPrediction1(!showPrediction1)
+                              }
+                            />
+                          </label>
                         </div>
-                        <div className="prediction-results">
-                          {predictionError && (
-                            <p className="error-message">{predictionError}</p>
-                          )}
-                          {predictionResults.length > 0 && (
-                            <>
-                              <p className="bold-header">Prediction Results</p>
-                              <table className="file-details-table">
-                                <thead>
-                                  <tr>
-                                    <th>ID</th>
-                                    <th>Prediction</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {predictionResults.map((result, index) => (
-                                    <tr key={index}>
-                                      <td>{index}</td>
-                                      <td>{result}</td>{" "}
+
+                        {predictionResults.length > 0 && (
+                          <div className="results-container">
+                            <div className="prediction-results">
+                              <p className="light-header">Prediction Results</p>
+                              {predictionError && (
+                                <p className="error-message">
+                                  {predictionError}
+                                </p>
+                              )}
+                              {filteredResults.length > 0 ? (
+                                <table className="file-details-table">
+                                  <thead>
+                                    <tr>
+                                      <th>ID</th>
+                                      <th>Prediction</th>
                                     </tr>
-                                  ))}
-                                </tbody>
-                              </table>
-                            </>
-                          )}
-                        </div>
+                                  </thead>
+                                  <tbody>
+                                    {filteredResults.map((result) => (
+                                      <tr key={result.id}>
+                                        <td>{result.id}</td>
+                                        <td>{result.prediction}</td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              ) : predictionResults.length > 0 ? (
+                                <p className="extralight-header">
+                                  No results found
+                                </p>
+                              ) : null}
+                            </div>
+
+                            <div className="chart-results">
+                              {predictionResults.length > 0 && (
+                                <>
+                                  <p className="light-header">Chart.js</p>
+                                  {/* Insert Chart.js visualization here */}
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        )}
                       </>
                     )}
-                    {/* CHART.JS */}
                   </div>
                 </aside>
               </div>

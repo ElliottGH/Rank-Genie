@@ -61,7 +61,7 @@ function Admin() {
       if (response.ok) {
         setTrainMessage(result.message);
       } else {
-        setTrainMessage(result.error);
+        setTrainMessage(`${result.error}: ${result.details}`);
       }
     } catch (error) {
       setTrainMessage("Failed to communicate with the server.");
