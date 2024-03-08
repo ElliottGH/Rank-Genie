@@ -429,7 +429,7 @@ function App() {
             <button className="contact-button">AT</button>
           </div>
           <hr />
-          <p>&copy; 2023 RankGenie. All rights reserved.</p>
+          <p>&copy; 2023-2024 RankGenie. All rights reserved.</p>
         </footer>
 
         <script src="js/script.js"></script>

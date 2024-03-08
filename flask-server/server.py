@@ -45,9 +45,6 @@ except Error as e:
 myCursor = mydb.cursor()
 myCursor.execute("SHOW DATABASES")
 
-##IMPORTANT REMINDER TO FIX LATER
-##this python/flask things sends to localhost on port 5000 where react is using port 3000
-
 def get_db_connection():
     return mysql.connector.connect(
         host="localhost",
@@ -184,7 +181,8 @@ def index():
 
 #I think this needs to be combined with the temporary backend in App.js to work properly.
 #Parses the given CSV file
-def parseCSV(filePath):
+
+""" def parseCSV(filePath):
     # Use Pandas to parse the CSV file
     csvData = pd.read_csv(filePath)
     fileName = os.path.splitext(os.path.basename(filePath))[0].replace(' ', '_').replace('-', '_').replace('(', '').replace(')', '').replace('/', '_').replace(',', '')
@@ -219,7 +217,7 @@ def parseCSV(filePath):
         if conn is not None:
             conn.close()
 
-# parseCSV("dataset.csv")
+parseCSV("dataset.csv") """
 
 if __name__ == '__main__':
     app.logger.setLevel('DEBUG')
