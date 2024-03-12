@@ -4,7 +4,15 @@ import { BrowserRouter as Router, Route, Routes, Link } from "react-router-dom";
 import Login from "./Login";
 import Admin from "./Admin";
 
+import Chart from 'chart.js/auto';
+import { CategoryScale } from "chart.js";
+import BarChart from "./components/BarChart";
+import { Data } from "./utils/Data";
+import LineChart from "./components/LineChart";
+
 // import {UserData} from './Data' // Replace this with the connection to the database/dataset that will be represented by graphs
+Chart.register(CategoryScale);
+
 
 function App() {
   // STATE HOOKS
@@ -39,6 +47,18 @@ function App() {
   }, [searchID, showPrediction0, showPrediction1, predictionResults]);
 
   const fileInputRef = useRef(null);
+
+  const [chartData, setChartData] = useState({
+    labels: Data.map((data) => data.year), 
+    datasets: [
+      {
+        label: "Users Gained ",
+        data: Data.map((data) => data.userGain),
+        borderColor: "black",
+        borderWidth: 2
+      }
+    ]
+  });
 
   // Straight to model
   const handlePredict = async () => {
@@ -410,6 +430,15 @@ function App() {
                         )}
                       </>
                     )}
+                    {/* Additional right panel content */}
+                    <div className="chart-Container">
+                      <div>
+                        <BarChart chartData = {chartData}/>
+                      </div>
+                      <div>
+                        <LineChart chartData = {chartData}/>
+                      </div>
+                    </div>
                   </div>
                 </aside>
               </div>
