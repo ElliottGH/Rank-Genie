@@ -141,6 +141,19 @@ header {
   margin-left: 2px;
 }
 
+.delete-icon-container {
+  display: inline-block;
+  vertical-align: middle;
+  cursor: pointer;
+}
+
+.delete-icon-image {
+  width: 26px;
+  height: 26px;
+  object-fit: cover;
+  margin-left: 2px;
+}
+
 .button-container {
   margin-bottom: 20px;
 }
@@ -275,10 +288,10 @@ footer p {
   background-color: #f8f8f8;
 }
 
-.login-prompt {
+.extralight-header {
   color: grey;
   font-style: italic;
-  text-align: right;
+  text-align: left;
   margin-left: 20px;
   font-size: 0.8em;
 }
@@ -294,4 +307,28 @@ footer p {
   font-style: bold;
   text-align: left;
   margin: 5px;
+}
+
+.error-message {
+  color: red;
+  margin-top: 20px;
+}
+
+.file-inputs-container {
+  display: flex;
+  justify-content: space-between;
+  margin: 20px;
+}
+
+.results-container {
+  display: flex;
+}
+
+.prediction-results {
+  width: 260px;
+}
+
+.chart-results {
+  flex-grow: 1;
+  padding-left: 20px;
 }

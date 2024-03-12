@@ -12,12 +12,12 @@ function Login({ onLogin }) {
 
     try {
       // Send a POST request to the server's login route
-      const response = await fetch("/login", {
+      const response = await fetch("http://localhost:5000/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
         },
-        // Convert the React state to a URL-encoded string
+        // Convert React state to a URL-encoded string
         body: `username=${encodeURIComponent(
           username
         )}&password=${encodeURIComponent(password)}`,
@@ -36,7 +36,8 @@ function Login({ onLogin }) {
       }
     } catch (error) {
       console.error("Login error:", error);
-      onLogin(false); // Handle network errors or server not reachable
+      onLogin(false);
+      // Network error handling here later maybe?
     }
   };
 

@@ -34,7 +34,6 @@ class DataParser():
         self.reg_data['Registered_IP'] = self.reg_data['Registered_IP'].apply(lambda row: False if not self.is_valid_ip(row) else row)
         self.reg_data = self.reg_data[self.reg_data['Registered_IP'] != False].reset_index(drop=True)
 
-
         # Clean up Payment data
         self.pay_data.dropna(how='all', inplace=True)
 

@@ -1,30 +1,52 @@
 import "./App.css";
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { BrowserRouter as Router, Route, Routes, Link } from "react-router-dom";
 import Login from "./Login";
+import Admin from "./Admin";
+
 import Chart from 'chart.js/auto';
 import { CategoryScale } from "chart.js";
 import BarChart from "./components/BarChart";
 import { Data } from "./utils/Data";
 import LineChart from "./components/LineChart";
 
-
 // import {UserData} from './Data' // Replace this with the connection to the database/dataset that will be represented by graphs
 Chart.register(CategoryScale);
 
 
 function App() {
-  const [data, setData] = useState("");
+  // STATE HOOKS
   const [fileSelected, setFileSelected] = useState(null); // Is there a file selected?
   const [selectedFile, setSelectedFile] = useState(null); // What is the selected file
-  const [fileName, setFileName] = useState(""); // File properties
+  const [fileName, setFileName] = useState(""); // File properties v v v
   const [fileSize, setFileSize] = useState("---");
   const [fileType, setFileType] = useState("---");
   const [fileLastModified, setFileLastModified] = useState("---");
   const [fileExtension, setFileExtension] = useState("---");
   const [isLoggedIn, setIsLoggedIn] = useState(false); // Simulate authentication state
-  const [userName, setUserName] = useState("User"); // Simulate logged-in user name
   const [activeTab, setActiveTab] = useState("upload"); // 'upload' or 'files'
+  const [predictionResults, setPredictionResults] = useState([]);
+  const [predictionError, setPredictionError] = useState("");
+  // Search
+  const [searchID, setSearchID] = useState("");
+  const [showPrediction0, setShowPrediction0] = useState(true);
+  const [showPrediction1, setShowPrediction1] = useState(true);
+  const [filteredResults, setFilteredResults] = useState([]);
+
+  // Search and filters
+  useEffect(() => {
+    const filtered = predictionResults.filter((result) => {
+      const matchesID = searchID === "" || result.id.toString() === searchID;
+      const matchesPrediction =
+        (result.prediction === 0 && showPrediction0) ||
+        (result.prediction === 1 && showPrediction1);
+
+      return matchesID && matchesPrediction;
+    });
+    setFilteredResults(filtered);
+  }, [searchID, showPrediction0, showPrediction1, predictionResults]);
+
+  const fileInputRef = useRef(null);
 
   const [chartData, setChartData] = useState({
     labels: Data.map((data) => data.year), 
@@ -39,7 +61,43 @@ function App() {
   });
 
   // Straight to model
-  const handlePredict = async () => {};
+  const handlePredict = async () => {
+    if (!selectedFile) {
+      alert("Please select a file first!");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("file", selectedFile);
+    console.log("Sending file to server:", selectedFile.name);
+
+    try {
+      const response = await fetch("http://localhost:5000/predict", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        const results = result.prediction.map((prediction, index) => ({
+          id: index,
+          prediction,
+        }));
+        setPredictionResults(results);
+        setPredictionError(""); // Clear old errors
+      } else {
+        console.error("Prediction failed");
+        const errorResult = await response.json();
+        setPredictionResults([]);
+        setPredictionError(
+          `Error: ${errorResult.error || "Prediction failed"}`
+        );
+      }
+    } catch (error) {
+      console.error("Error during prediction", error);
+      setPredictionError(`Error: ${error.message || "Failed to fetch"}`);
+    }
+  };
 
   const handleTabSwitch = (tabName) => {
     setActiveTab(tabName);
@@ -54,6 +112,7 @@ function App() {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + " " + sizes[i];
   };
 
+  // Adding a file and its properties to the page
   const handleFileSelect = (event) => {
     if (event.target.files && event.target.files.length > 0) {
       const file = event.target.files[0];
@@ -76,6 +135,39 @@ function App() {
       setFileType("---");
       setFileLastModified("---");
       setFileExtension("---");
+    }
+    setPredictionError("");
+    setPredictionResults([]);
+    setFilteredResults([]);
+    setSearchID("");
+    setShowPrediction0(true);
+    setShowPrediction1(true);
+  };
+
+  // Clearing a file from the page
+  const handleFileClear = () => {
+    const isConfirmed = window.confirm(
+      "Are you sure you want to clear the uploaded file?"
+    );
+    if (isConfirmed) {
+      setFileSelected(false);
+      setSelectedFile(null);
+      setFileName("");
+      setFileSize("---");
+      setFileType("---");
+      setFileLastModified("---");
+      setFileExtension("---");
+      setPredictionError("");
+      setPredictionResults([]);
+      setFilteredResults([]);
+      setSearchID("");
+      setShowPrediction0(true);
+      setShowPrediction1(true);
+
+      // Reset the file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
     }
   };
 
@@ -126,7 +218,7 @@ function App() {
                   Logout
                 </a>
                 {" • "}
-                <Link to="/" className="username-link">
+                <Link to="/admin" className="username-link">
                   Admin
                 </Link>
                 <div className="avatar-container">
@@ -141,6 +233,7 @@ function App() {
           </nav>
         </header>
         <Routes>
+          <Route path="/admin" element={<Admin />} />
           <Route
             path="/login"
             element={
@@ -178,6 +271,7 @@ function App() {
                             style={{ display: "none" }}
                             id="file-input"
                             accept=".csv"
+                            ref={fileInputRef}
                           />
                           <div
                             className="file-input-container"
@@ -238,26 +332,102 @@ function App() {
                   <div className="right-panel-container">
                     {fileSelected && (
                       <>
-                        <p className="bold-header">Selected File: {fileName}</p>
+                        <p className="bold-header">
+                          Selected File: {fileName}
+                          <span
+                            className="delete-icon-container"
+                            onClick={handleFileClear}
+                          >
+                            <img
+                              src="images/delete.png"
+                              alt="Delete"
+                              className="delete-icon-image"
+                            />
+                          </span>
+                        </p>
                         <div className="file-header">
                           <button
                             onClick={handlePredict}
                             className="basic-button"
+                            type="button"
                           >
                             Predict
                           </button>
-                          <button
-                            className="basic-button"
-                            disabled={!isLoggedIn}
-                          >
-                            Save
-                          </button>
-                          {!isLoggedIn && (
-                            <p className="login-prompt">
-                              Log in to save files to an account
-                            </p>
-                          )}
+                          <input
+                            type="text"
+                            placeholder="Filter by ID..."
+                            value={searchID}
+                            onChange={(e) => setSearchID(e.target.value)}
+                            style={{ marginLeft: "20px" }}
+                          />
+                          <label className="extralight-header">
+                            Only show predictions of&nbsp;
+                          </label>
+                          <label>
+                            0
+                            <input
+                              type="checkbox"
+                              checked={showPrediction0}
+                              onChange={() =>
+                                setShowPrediction0(!showPrediction0)
+                              }
+                            />
+                          </label>
+                          <label>
+                            1
+                            <input
+                              type="checkbox"
+                              checked={showPrediction1}
+                              onChange={() =>
+                                setShowPrediction1(!showPrediction1)
+                              }
+                            />
+                          </label>
                         </div>
+
+                        {predictionResults.length > 0 && (
+                          <div className="results-container">
+                            <div className="prediction-results">
+                              <p className="light-header">Prediction Results</p>
+                              {predictionError && (
+                                <p className="error-message">
+                                  {predictionError}
+                                </p>
+                              )}
+                              {filteredResults.length > 0 ? (
+                                <table className="file-details-table">
+                                  <thead>
+                                    <tr>
+                                      <th>ID</th>
+                                      <th>Prediction</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {filteredResults.map((result) => (
+                                      <tr key={result.id}>
+                                        <td>{result.id}</td>
+                                        <td>{result.prediction}</td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              ) : predictionResults.length > 0 ? (
+                                <p className="extralight-header">
+                                  No results found
+                                </p>
+                              ) : null}
+                            </div>
+
+                            <div className="chart-results">
+                              {predictionResults.length > 0 && (
+                                <>
+                                  <p className="light-header">Chart.js</p>
+                                  {/* Insert Chart.js visualization here */}
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        )}
                       </>
                     )}
                     {/* Additional right panel content */}
@@ -288,7 +458,7 @@ function App() {
             <button className="contact-button">AT</button>
           </div>
           <hr />
-          <p>&copy; 2023 RankGenie. All rights reserved.</p>
+          <p>&copy; 2023-2024 RankGenie. All rights reserved.</p>
         </footer>
 
         <script src="js/script.js"></script>
