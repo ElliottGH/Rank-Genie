@@ -7,6 +7,13 @@ h3 {
   font-family: "Segoe UI", Arial, sans-serif;
 }
 
+hr {
+  border: 0;
+  height: 1px;
+  background: #d8d8d8;
+  margin-bottom: 20px;
+}
+
 body {
   background: #000000;
 }
@@ -72,6 +79,7 @@ header {
 .right-panel {
   display: flex;
   flex-direction: column;
+  flex-grow: 1;
   min-height: 100%;
 }
 
@@ -86,7 +94,7 @@ header {
 .left-panel {
   display: flex;
   flex-direction: column;
-  width: 300px;
+  width: 20%;
   min-height: 100%;
 }
 
@@ -104,41 +112,19 @@ header {
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
 }
 
-.tab-buttons {
-  display: flex;
-  margin-bottom: 20px;
-}
-
-.tab-buttons button {
-  flex-grow: 1;
-  background: #f3f3f3;
-  border: 1px solid #ddd;
-  padding: 10px;
-  cursor: pointer;
-  border-radius: 5px 5px 0 0;
-  margin-right: 5px; /* Space between buttons */
-}
-
-.tab-buttons button:last-child {
-  margin-right: 0;
-}
-
-.tab-buttons button.active {
-  background: #fff;
-  border-bottom: 1px solid #fff;
-}
-
 .avatar-container {
   display: inline-block;
   vertical-align: middle;
 }
 
 .avatar-image {
-  width: 30px;
-  height: 30px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   object-fit: cover;
+  display: block;
   margin-left: 2px;
+  margin-right: 5px;
 }
 
 .delete-icon-container {
@@ -162,9 +148,12 @@ header {
   border-radius: 50%;
   width: 50px;
   height: 50px;
-  padding: 0;
+  margin-left: 5px;
+  margin-right: 5px;
+  margin-top: 2px;
   line-height: 50px;
   text-align: center;
+  border: 0px;
 }
 
 .contact-button:hover {
@@ -303,6 +292,14 @@ footer p {
   margin: 5px;
 }
 
+.contact-header {
+  color: rgb(193, 193, 193);
+  font-style: italic;
+  text-align: center;
+  margin: 5px;
+  font-size: 1.2em;
+}
+
 .bold-header {
   font-style: bold;
   text-align: left;
@@ -325,10 +322,31 @@ footer p {
 }
 
 .prediction-results {
-  width: 260px;
+  width: 25%;
 }
 
 .chart-results {
-  flex-grow: 1;
+  width: 50%;
   padding-left: 20px;
+}
+
+.results-scrolling-frame {
+  max-height: calc(100vh - 100px);
+  overflow-y: auto;
+  border: 1px solid #ccc;
+  margin-top: 10px;
+  padding-right: 5px;
+}
+
+.profile-card {
+  position: fixed;
+  padding: 10px;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  display: flex;
+  z-index: 1000;
+  color: black;
+  pointer-events: none;
 }

@@ -4,15 +4,12 @@ import { BrowserRouter as Router, Route, Routes, Link } from "react-router-dom";
 import Login from "./Login";
 import Admin from "./Admin";
 
-import Chart from 'chart.js/auto';
+import Chart from "chart.js/auto";
 import { CategoryScale } from "chart.js";
-import BarChart from "./components/BarChart";
-import { Data } from "./utils/Data";
+import PieChart from "./components/PieChart";
 import LineChart from "./components/LineChart";
 
-// import {UserData} from './Data' // Replace this with the connection to the database/dataset that will be represented by graphs
 Chart.register(CategoryScale);
-
 
 function App() {
   // STATE HOOKS
@@ -24,14 +21,70 @@ function App() {
   const [fileLastModified, setFileLastModified] = useState("---");
   const [fileExtension, setFileExtension] = useState("---");
   const [isLoggedIn, setIsLoggedIn] = useState(false); // Simulate authentication state
-  const [activeTab, setActiveTab] = useState("upload"); // 'upload' or 'files'
+
+  // Prediction
   const [predictionResults, setPredictionResults] = useState([]);
   const [predictionError, setPredictionError] = useState("");
+
   // Search
   const [searchID, setSearchID] = useState("");
   const [showPrediction0, setShowPrediction0] = useState(true);
   const [showPrediction1, setShowPrediction1] = useState(true);
   const [filteredResults, setFilteredResults] = useState([]);
+
+  // Contacts
+  const [hoveredContact, setHoveredContact] = useState(null);
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  const contacts = [
+    {
+      id: "EC",
+      name: "Elliott Carter",
+      email: "ecarte6@uwo.ca",
+      img: "images/avatar.png",
+    },
+    {
+      id: "LS",
+      name: "Lauryn Son",
+      email: "lson2@uwo.ca",
+      img: "images/avatar.png",
+    },
+    {
+      id: "RK",
+      name: "Rithik Kalra",
+      email: "rkalra24@uwo.ca",
+      img: "images/avatar.png",
+    },
+    {
+      id: "LW",
+      name: "Lucas Winterburn",
+      email: "lwinte@uwo.ca",
+      img: "images/avatar.png",
+    },
+    {
+      id: "SM",
+      name: "Scott Murray",
+      email: "smurr4@uwo.ca",
+      img: "images/avatar.png",
+    },
+    {
+      id: "AT",
+      name: "Andrew Tobar",
+      email: "ahilltob@uwo.ca",
+      img: "images/avatar.png",
+    },
+  ];
+
+  const handleMouseOver = (contact) => {
+    setHoveredContact(contact);
+  };
+
+  const handleMouseMove = (e) => {
+    setMousePos({ x: e.clientX, y: e.clientY });
+  };
+
+  const handleMouseOut = () => {
+    setHoveredContact(null);
+  };
 
   // Search and filters
   useEffect(() => {
@@ -48,19 +101,35 @@ function App() {
 
   const fileInputRef = useRef(null);
 
+  // CHARTS
+  // Overall data, for the pie chart
   const [chartData, setChartData] = useState({
-    labels: Data.map((data) => data.year), 
+    labels: ["Under Threshold [0]", "Exceeds Threshold [1]"],
     datasets: [
       {
-        label: "Users Gained ",
-        data: Data.map((data) => data.userGain),
-        borderColor: "black",
-        borderWidth: 2
-      }
-    ]
+        label: "Prediction Distribution",
+        data: [],
+        backgroundColor: ["rgba(255, 99, 132, 0.2)", "rgba(54, 162, 235, 0.2)"],
+        borderColor: ["rgba(255, 99, 132, 1)", "rgba(54, 162, 235, 1)"],
+        borderWidth: 1,
+      },
+    ],
+  });
+  // Line chart data
+  const [lineChartData, setLineChartData] = useState({
+    labels: [],
+    datasets: [
+      {
+        label: "Cumulative Count of '1' Predictions",
+        data: [],
+        fill: false,
+        backgroundColor: "rgb(75, 192, 192)",
+        borderColor: "rgba(75, 192, 192, 0.2)",
+      },
+    ],
   });
 
-  // Straight to model
+  // Prediction button
   const handlePredict = async () => {
     if (!selectedFile) {
       alert("Please select a file first!");
@@ -83,10 +152,59 @@ function App() {
           id: index,
           prediction,
         }));
+        // Update predictions
         setPredictionResults(results);
-        setPredictionError(""); // Clear old errors
+
+        // Update chart data
+        // Pie
+        const counts = results.reduce((acc, curr) => {
+          acc[curr.prediction] = (acc[curr.prediction] || 0) + 1;
+          return acc;
+        }, {});
+        setChartData((prevChartData) => ({
+          ...prevChartData,
+          datasets: [
+            {
+              ...prevChartData.datasets[0],
+              data: [counts[0] || 0, counts[1] || 0],
+            },
+          ],
+        }));
+
+        // Line
+        const sampleSize = 100; // Number of points in line graph
+        const stepSize = Math.ceil(results.length / sampleSize);
+        let sampledResults = [];
+        let cumulativeCount = 0;
+        for (let i = 0; i < results.length; i += stepSize) {
+          for (let j = i; j < Math.min(i + stepSize, results.length); j++) {
+            if (results[j].prediction === 1) {
+              cumulativeCount++;
+            }
+          }
+          sampledResults.push({ id: results[i].id, cumulativeCount });
+        }
+
+        const labels = sampledResults.map((result) => `ID ${result.id}`);
+        const data = sampledResults.map((result) => result.cumulativeCount);
+
+        setLineChartData({
+          labels: labels,
+          datasets: [
+            {
+              label: "Cumulative Predictions Over Threshold",
+              data: data,
+              fill: false,
+              backgroundColor: "rgb(75, 192, 192)",
+              borderColor: "rgba(75, 192, 192)",
+              pointRadius: 0,
+            },
+          ],
+        });
+
+        // Update error message
+        setPredictionError("");
       } else {
-        console.error("Prediction failed");
         const errorResult = await response.json();
         setPredictionResults([]);
         setPredictionError(
@@ -99,10 +217,7 @@ function App() {
     }
   };
 
-  const handleTabSwitch = (tabName) => {
-    setActiveTab(tabName);
-  };
-
+  // Format the bytes text for the Properties window
   const handleBytes = (bytes, decimals = 2) => {
     if (bytes === 0) return "0 Bytes";
     const k = 1024;
@@ -246,86 +361,61 @@ function App() {
               <div className="main-content">
                 <aside className="left-panel">
                   <div className="left-panel-container">
-                    <div className="tab-buttons">
-                      <button
-                        onClick={() => handleTabSwitch("upload")}
-                        className={activeTab === "upload" ? "active" : ""}
-                      >
-                        Upload File
-                      </button>
-                      <button
-                        onClick={() => handleTabSwitch("files")}
-                        className={activeTab === "files" ? "active" : ""}
-                        disabled={!isLoggedIn}
-                      >
-                        Saved CSVs
-                      </button>
-                    </div>
-                    {activeTab === "upload" && (
-                      <div className="upload-content">
-                        <div>
-                          <p className="light-header">File Upload</p>
-                          <input
-                            type="file"
-                            onChange={handleFileSelect}
-                            style={{ display: "none" }}
-                            id="file-input"
-                            accept=".csv"
-                            ref={fileInputRef}
-                          />
-                          <div
-                            className="file-input-container"
-                            onDragOver={handleDragOver}
-                            onDrop={handleDrop}
-                          >
-                            <br />
-                            <label
-                              htmlFor="file-input"
-                              className="basic-button"
-                            >
-                              Browse File
-                            </label>
-                            <p className="drag-drop-prompt">
-                              or Drag & Drop here
-                            </p>
-                          </div>
+                    <div className="upload-content">
+                      <div>
+                        <p className="light-header">File Upload</p>
+                        <input
+                          type="file"
+                          onChange={handleFileSelect}
+                          style={{ display: "none" }}
+                          id="file-input"
+                          accept=".csv"
+                          ref={fileInputRef}
+                        />
+                        <div
+                          className="file-input-container"
+                          onDragOver={handleDragOver}
+                          onDrop={handleDrop}
+                        >
+                          <br />
+                          <label htmlFor="file-input" className="basic-button">
+                            Browse File
+                          </label>
+                          <p className="drag-drop-prompt">
+                            or Drag & Drop here
+                          </p>
                         </div>
-                        {fileSelected && (
-                          <>
-                            <p className="light-header">Properties</p>
-                            <table className="file-details-table">
-                              <tbody>
-                                <tr>
-                                  <th>Name</th>
-                                  <td>{fileName}</td>
-                                </tr>
-                                <tr>
-                                  <th>Size</th>
-                                  <td>{fileSize ? `${fileSize}` : "---"}</td>
-                                </tr>
-                                <tr>
-                                  <th>Type</th>
-                                  <td>{fileType}</td>
-                                </tr>
-                                <tr>
-                                  <th>Last Modified</th>
-                                  <td>{fileLastModified}</td>
-                                </tr>
-                                <tr>
-                                  <th>Extension</th>
-                                  <td>{fileExtension}</td>
-                                </tr>
-                              </tbody>
-                            </table>
-                          </>
-                        )}
                       </div>
-                    )}
-                    {activeTab === "files" && (
-                      <div className="files-content">
-                        <p className="light-header">Uploaded CSVs</p>
-                      </div>
-                    )}
+                      {fileSelected && (
+                        <>
+                          <p className="light-header">Properties</p>
+                          <table className="file-details-table">
+                            <tbody>
+                              <tr>
+                                <th>Name</th>
+                                <td>{fileName}</td>
+                              </tr>
+                              <tr>
+                                <th>Size</th>
+                                <td>{fileSize ? `${fileSize}` : "---"}</td>
+                              </tr>
+                              <tr>
+                                <th>Type</th>
+                                <td>{fileType}</td>
+                              </tr>
+                              <tr>
+                                <th>Last Modified</th>
+                                <td>{fileLastModified}</td>
+                              </tr>
+                              <tr>
+                                <th>Extension</th>
+                                <td>{fileExtension}</td>
+                              </tr>
+                            </tbody>
+                          </table>
+                        </>
+                      )}
+                    </div>
                   </div>
                 </aside>
                 <aside className="right-panel">
@@ -350,6 +440,7 @@ function App() {
                             onClick={handlePredict}
                             className="basic-button"
                             type="button"
+                            disabled={predictionResults.length > 0}
                           >
                             Predict
                           </button>
@@ -384,45 +475,58 @@ function App() {
                             />
                           </label>
                         </div>
+                        <div>
+                          <hr />
+                        </div>
 
+                        {predictionError && (
+                          <p className="error-message">{predictionError}</p>
+                        )}
                         {predictionResults.length > 0 && (
                           <div className="results-container">
                             <div className="prediction-results">
                               <p className="light-header">Prediction Results</p>
-                              {predictionError && (
-                                <p className="error-message">
-                                  {predictionError}
-                                </p>
-                              )}
-                              {filteredResults.length > 0 ? (
-                                <table className="file-details-table">
-                                  <thead>
-                                    <tr>
-                                      <th>ID</th>
-                                      <th>Prediction</th>
-                                    </tr>
-                                  </thead>
-                                  <tbody>
-                                    {filteredResults.map((result) => (
-                                      <tr key={result.id}>
-                                        <td>{result.id}</td>
-                                        <td>{result.prediction}</td>
+                              <div className="results-scrolling-frame">
+                                {filteredResults.length > 0 ? (
+                                  <table className="file-details-table">
+                                    <thead>
+                                      <tr>
+                                        <th>ID</th>
+                                        <th>Prediction</th>
                                       </tr>
-                                    ))}
-                                  </tbody>
-                                </table>
-                              ) : predictionResults.length > 0 ? (
-                                <p className="extralight-header">
-                                  No results found
-                                </p>
-                              ) : null}
+                                    </thead>
+                                    <tbody>
+                                      {filteredResults.map((result) => (
+                                        <tr key={result.id}>
+                                          <td>{result.id}</td>
+                                          <td>{result.prediction}</td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                ) : predictionResults.length > 0 ? (
+                                  <p className="extralight-header">
+                                    No results found
+                                  </p>
+                                ) : null}
+                              </div>
                             </div>
 
                             <div className="chart-results">
                               {predictionResults.length > 0 && (
                                 <>
-                                  <p className="light-header">Chart.js</p>
-                                  {/* Insert Chart.js visualization here */}
+                                  <p className="light-header">
+                                    Chart Visualizations
+                                  </p>
+                                  <div className="chart-Container">
+                                    <div>
+                                      <LineChart chartData={lineChartData} />
+                                    </div>
+                                    <hr />
+                                    <div>
+                                      <PieChart chartData={chartData} />
+                                    </div>
+                                  </div>
                                 </>
                               )}
                             </div>
@@ -430,15 +534,6 @@ function App() {
                         )}
                       </>
                     )}
-                    {/* Additional right panel content */}
-                    <div className="chart-Container">
-                      <div>
-                        <BarChart chartData = {chartData}/>
-                      </div>
-                      <div>
-                        <LineChart chartData = {chartData}/>
-                      </div>
-                    </div>
                   </div>
                 </aside>
               </div>
@@ -447,16 +542,39 @@ function App() {
         </Routes>
 
         <footer>
-          <h3>Contact Us</h3>
+          <p className="contact-header">Contact Us</p>
           <div className="button-container">
-            {/* <!-- contact buttons - could show our emails or something --> */}
-            <button className="contact-button">EC</button>
-            <button className="contact-button">LS</button>
-            <button className="contact-button">RK</button>
-            <button className="contact-button">LW</button>
-            <button className="contact-button">SM</button>
-            <button className="contact-button">AT</button>
+            {contacts.map((contact) => (
+              <button
+                key={contact.id}
+                className="contact-button"
+                onMouseOver={() => handleMouseOver(contact)}
+                onMouseMove={handleMouseMove}
+                onMouseOut={handleMouseOut}
+              >
+                {contact.id}
+              </button>
+            ))}
           </div>
+          {hoveredContact && (
+            <div
+              className="profile-card"
+              style={{ top: `${mousePos.y}px`, left: `${mousePos.x}px` }} // Adjusted
+            >
+              <div>
+                <img
+                  src={hoveredContact.img}
+                  alt="Avatar"
+                  className="avatar-image"
+                />
+              </div>
+
+              <div>
+                <div>{hoveredContact.name}</div>
+                <div>{hoveredContact.email}</div>
+              </div>
+            </div>
+          )}
           <hr />
           <p>&copy; 2023-2024 RankGenie. All rights reserved.</p>
         </footer>

@@ -1,18 +1,21 @@
-// src/components/LineChart.js
 import React from "react";
-import { Line } from "react-chartjs-2";
+import { Pie } from "react-chartjs-2";
 
-function LineChart({ chartData }) {
+function PieChart({ chartData }) {
   return (
     <div className="chart-container">
       <h2 style={{ textAlign: "center" }}></h2>
-      <Line
+      <Pie
         data={chartData}
         options={{
           plugins: {
             title: {
               display: true,
-              text: "TOTAL PREDICTIONS ACROSS IDS",
+              text: "OVERALL PREDICTION DISTRIBUTION",
+            },
+            legend: {
+              display: true,
+              position: "bottom",
             },
           },
         }}
@@ -20,4 +23,5 @@ function LineChart({ chartData }) {
     </div>
   );
 }
-export default LineChart;
+
+export default PieChart;

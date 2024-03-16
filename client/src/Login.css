@@ -106,13 +106,6 @@ footer {
   width: 100%;
 }
 
-footer hr {
-  border: 0;
-  height: 1px;
-  background: #666;
-  margin-bottom: 20px;
-}
-
 footer p {
   margin: 0;
 }

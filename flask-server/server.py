@@ -54,6 +54,28 @@ def get_db_connection():
         buffered=True
     )
 
+## Check if models exist on load to set reset button
+@app.route('/do_models_exist', methods=['GET'])
+def check_model_existence():
+    xgboost_exists = os.path.exists('statics/xgboost_model.pkl')
+    randomforest_exists = os.path.exists('statics/randomforest_model.pkl')
+    model_exists = xgboost_exists or randomforest_exists
+    return jsonify({"model_exists": model_exists}), 200
+
+## Reset model files for clean slate
+@app.route('/reset_models', methods=['POST'])
+def reset_models():
+    try:
+        model_files = ['statics/xgboost_model.pkl', 'statics/randomforest_model.pkl']
+        for model_file in model_files:
+            model_path = os.path.join(os.getcwd(), model_file)
+            if os.path.exists(model_path):
+                os.remove(model_path)
+        return jsonify({"message": "Model files reset successfully"}), 200
+    except Exception as e:
+        return jsonify({"error": "Failed to delete model files", "details": str(e)}), 500
+
+
 ## Use registration data and payment data files (both) to train the model
 @app.route('/train', methods=['POST'])
 def train():
@@ -96,7 +118,6 @@ def train():
         os.unlink(temp_regdata.name)
         temp_paydata.close()
         os.unlink(temp_paydata.name)
-        app.logger.error('Failed to train model: {}'.format(e))
         return jsonify({'error': 'Failed to train model', 'details': str(e)}), 500
 
 
@@ -177,7 +198,6 @@ def backend():
 def index():
     #Sets HTML template
     return "trying this out"
-
 
 #I think this needs to be combined with the temporary backend in App.js to work properly.
 #Parses the given CSV file

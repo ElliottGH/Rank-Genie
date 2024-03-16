@@ -1,13 +1,30 @@
-import React, { useState, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useRef, useEffect } from "react";
 import "./Admin.css";
 
 function Admin() {
   const [registrationDataFile, setRegistrationDataFile] = useState(null);
   const [paymentDataFile, setPaymentDataFile] = useState(null);
   const [trainMessage, setTrainMessage] = useState(""); // Training results (success/fail)
+  const [resetEnabled, setResetEnabled] = useState(true);
   const registrationFileInputRef = useRef(null);
   const paymentFileInputRef = useRef(null);
+
+  // Check if the model files exist on load and setup reset button
+  useEffect(() => {
+    const checkModelExistence = async () => {
+      try {
+        const response = await fetch("http://localhost:5000/do_models_exist");
+        const result = await response.json();
+        if (response.ok) {
+          setResetEnabled(result.model_exists);
+        }
+      } catch (error) {
+        console.error("Couldn't check model file existence:", error);
+      }
+    };
+
+    checkModelExistence();
+  }, []);
 
   const handleRegistrationFileSelect = (event) => {
     const file = event.target.files[0];
@@ -60,6 +77,7 @@ function Admin() {
 
       if (response.ok) {
         setTrainMessage(result.message);
+        setResetEnabled(true);
       } else {
         setTrainMessage(`${result.error}: ${result.details}`);
       }
@@ -68,10 +86,30 @@ function Admin() {
     }
   };
 
+  const handleReset = async () => {
+    try {
+      const response = await fetch("http://localhost:5000/reset_models", {
+        method: "POST",
+      });
+      const result = await response.json();
+
+      if (response.ok) {
+        setTrainMessage(result.message);
+        setResetEnabled(false);
+      } else {
+        setTrainMessage(result.error || "Failed to reset model files.");
+      }
+    } catch (error) {
+      setTrainMessage("Failed to communicate with the server for model reset.");
+    }
+  };
+
   return (
     <div className="admin-container">
       <h1>Admin Panel</h1>
-      <p className="light-header">Train Model</p>
+      <p className="light-header">
+        Model Status: {resetEnabled ? "TRAINED" : "NOT TRAINED"}
+      </p>
       <div className="file-inputs-container">
         <div className="file-input-container">
           <p className="light-header">Registration Data File</p>
@@ -149,6 +187,14 @@ function Admin() {
         disabled={!(registrationDataFile && paymentDataFile)}
       >
         Train
+      </button>
+      <button
+        onClick={handleReset}
+        className="basic-button"
+        type="button"
+        disabled={!resetEnabled}
+      >
+        Reset
       </button>
       <p className="error-message">{trainMessage}</p>
     </div>

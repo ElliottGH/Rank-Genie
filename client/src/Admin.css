@@ -139,18 +139,6 @@ header {
   justify-content: center;
   height: 100%;
 }
-.avatar-container {
-  display: inline-block;
-  vertical-align: middle;
-}
-
-.avatar-image {
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  object-fit: cover;
-  margin-left: 2px;
-}
 
 .delete-icon-container {
   display: inline-block;
@@ -189,13 +177,6 @@ footer {
   padding: 20px 0;
   bottom: 0;
   width: 100%;
-}
-
-footer hr {
-  border: 0;
-  height: 1px;
-  background: #666;
-  margin-bottom: 20px;
 }
 
 footer p {
@@ -272,14 +253,14 @@ footer p {
   width: 100%;
   border-collapse: collapse;
   table-layout: fixed;
-  font-size: 0.8em; /* Makes all table text slightly smaller */
+  font-size: 0.8em;
 }
 
 .file-details-table th,
 .file-details-table td {
   padding: 4px;
   text-align: left;
-  vertical-align: top; /* Aligns content to the top */
+  vertical-align: top;
   overflow-wrap: break-word;
 }
 
