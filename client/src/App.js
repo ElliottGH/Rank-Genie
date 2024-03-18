@@ -187,6 +187,7 @@ function App() {
 
         const labels = sampledResults.map((result) => `ID ${result.id}`);
         const data = sampledResults.map((result) => result.cumulativeCount);
+        const earnings = result.cumulativeCount*1000
 
         setLineChartData({
           labels: labels,
@@ -514,7 +515,7 @@ function App() {
 
                             <div className="chart-results">
                               <p className="light-header">Estimated Earnings</p>
-                              <div class="earnings-value">$100.00</div>
+                              <div class="earnings-value">${earnings}+</div>
 
                               {predictionResults.length > 0 && (
                                 <>
