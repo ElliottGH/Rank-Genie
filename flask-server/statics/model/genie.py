@@ -42,8 +42,7 @@ class DataParser():
         self.pay_data['id']= self.pay_data['id'].astype(int)
         self.reg_data['RiskScore']= self.reg_data['RiskScore'].astype(float)
 
-        self.merged_df = pd.merge(self.reg_data, self.pay_data, on='id', how='inner')
-        #self.merged_df = pd.merge(self.merged_df, self.ip_data, on='id', how='inner')
+        self.merged_df = pd.merge(self.reg_data, self.pay_data, on='id', how='left')
         self.merged_df.rename(columns={'UserAgent': 'DeviceName'}, inplace=True)
 
     def get_amount_code(self, amount):
