@@ -101,7 +101,8 @@ function App() {
 
   const fileInputRef = useRef(null);
 
-  // CHARTS
+  // CHARTS & EARNINGS
+  const [earnings, setEarnings] = useState(0)
   // Overall data, for the pie chart
   const [chartData, setChartData] = useState({
     labels: ["Under Threshold [0]", "Exceeds Threshold [1]"],
@@ -187,7 +188,7 @@ function App() {
 
         const labels = sampledResults.map((result) => `ID ${result.id}`);
         const data = sampledResults.map((result) => result.cumulativeCount);
-        const earnings = result.cumulativeCount*1000
+        setEarnings(result.cumulativeCount*1000)
 
         setLineChartData({
           labels: labels,
