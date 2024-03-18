@@ -513,6 +513,9 @@ function App() {
                             </div>
 
                             <div className="chart-results">
+                              <p className="light-header">Estimated Earnings</p>
+                              <div class="earnings-value">$100.00</div>
+
                               {predictionResults.length > 0 && (
                                 <>
                                   <p className="light-header">

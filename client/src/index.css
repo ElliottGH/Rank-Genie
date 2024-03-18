@@ -350,3 +350,11 @@ footer p {
   color: black;
   pointer-events: none;
 }
+
+.earnings-value {
+  font-size: 24px;
+  color: #0db97c;
+  font-weight: bold;
+  margin-left: 20px;
+  margin-bottom: 20px;
+}

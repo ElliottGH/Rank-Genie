@@ -140,6 +140,7 @@ def predict():
         data_to_predict = pd.read_csv(file_path)
         scaler = StandardScaler()
         x_standardized_data = scaler.fit_transform(data_to_predict)
+        print(x_standardized_data.shape)
         y_pred = xgboost_model.model.predict(x_standardized_data)
         os.remove(file_path)
         return jsonify({"prediction": y_pred.tolist()}), 200
