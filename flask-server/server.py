@@ -98,11 +98,10 @@ def train():
         xgboostmodel.split_data()
         randomforestmodel.split_data()
 
-
         xgboostmodel.evaluate_model()
         randomforestmodel.evaluate_model()
 
-        joblib.dump(xgboostmodel, 'statics/xgboost_model.pkl')    
+        joblib.dump(xgboostmodel, 'statics/xgboost_model.pkl')
         joblib.dump(randomforestmodel, 'statics/randomforest_model.pkl')
 
         # Cleanup temp files
@@ -134,16 +133,27 @@ def predict():
     file.save(file_path)
 
     try:
-        # load model
+        # load model xgboost
         xgboost_model = joblib.load('statics/xgboost_model.pkl')
+        randomforest_model = joblib.load('statics/randomforest_model.pkl')
 
         data_to_predict = pd.read_csv(file_path)
         scaler = StandardScaler()
+
+        user_id = data_to_predict['id']
+        data_to_predict.drop('id', axis=1)
         x_standardized_data = scaler.fit_transform(data_to_predict)
-        print(x_standardized_data.shape)
-        y_pred = xgboost_model.model.predict(x_standardized_data)
+
+        pred_data = {
+            "ID": user_id.tolist()
+            "XGBoost_Pred": xgboost_model.model.predict(x_standardized_data).tolist()
+            "RandomForest_Pred": randomforest_model.model.predict(x_standardized_data).tolist()
+            "RiskScore": data_to_predict['RiskScore'].tolist()
+        }
+
         os.remove(file_path)
-        return jsonify({"prediction": y_pred.tolist()}), 200
+
+        return jsonify(pred_data), 200
     except FileNotFoundError:
         os.remove(file_path)
         return jsonify({"error": "Model file not found. Please train the model before attempting to predict."}), 500
