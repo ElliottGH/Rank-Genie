@@ -227,14 +227,30 @@ function App() {
         setEarnings(cumulativeCount);
 
         // Scatter
+        // Sampling to make the graph not lag the whole site - should cut lag here by 90% without affecting distribution visualization too much
+        // We can make this adjustable in the future
+        let samplingCounter = 0;
+        const filteredData = results
+          .map((result) => {
+            // If the prediction is 0 and risk score is under this, apply sampling
+            if (result.prediction === 0 && result.riskScore < 10) {
+              samplingCounter += 1;
+              if (samplingCounter % 10 !== 0) {
+                return null;
+              }
+            }
+            return {
+              x: result.riskScore,
+              y: result.prediction,
+            };
+          })
+          .filter((point) => point !== null);
+
         const scatterData = {
           datasets: [
             {
               label: "Risk Score vs. Prediction",
-              data: results.map((result) => ({
-                x: result.riskScore,
-                y: result.prediction,
-              })),
+              data: filteredData,
               backgroundColor: "rgba(75, 192, 192, 0.2)",
               borderColor: "rgba(75, 192, 192, 1)",
             },
