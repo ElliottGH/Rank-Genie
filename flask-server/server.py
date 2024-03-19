@@ -127,32 +127,43 @@ def predict():
     file = request.files['file']
     if file.filename == '':
         return jsonify({'error': 'No selected file'}), 400
+    if 'modelType' not in request.form:
+        return jsonify({'error': 'No model specified'}), 400
     
     filename = secure_filename(file.filename)
     file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
     file.save(file_path)
+    model_type = request.form['modelType']
 
     try:
-        # load model xgboost
-        xgboost_model = joblib.load('statics/xgboost_model.pkl')
-        randomforest_model = joblib.load('statics/randomforest_model.pkl')
+        # Dynamically load model
+        if model_type == "xgboost":
+            model = joblib.load('statics/xgboost_model.pkl')
+        elif model_type == "randomforest":
+            model = joblib.load('statics/randomforest_model.pkl')
+        else:
+            return jsonify({"error": "Invalid model type specified."}), 400
 
+        # Prediction
         data_to_predict = pd.read_csv(file_path)
-        scaler = StandardScaler()
+        if 'id' in data_to_predict.columns:
+            user_id = data_to_predict['id'].tolist()
+            data_to_predict = data_to_predict.drop('id', axis=1)
+        else:
+            user_id = list(range(len(data_to_predict)))  # Fallback if no 'id'
 
-        user_id = data_to_predict['id']
-        data_to_predict.drop('id', axis=1)
+        scaler = StandardScaler()
         x_standardized_data = scaler.fit_transform(data_to_predict)
 
+        predictions = model.model.predict(x_standardized_data)
+
         pred_data = {
-            "ID": user_id.tolist()
-            "XGBoost_Pred": xgboost_model.model.predict(x_standardized_data).tolist()
-            "RandomForest_Pred": randomforest_model.model.predict(x_standardized_data).tolist()
-            "RiskScore": data_to_predict['RiskScore'].tolist()
+            "ID": user_id,
+            "Prediction": predictions.tolist(),
+            "RiskScore": data_to_predict['RiskScore'].tolist() if 'RiskScore' in data_to_predict else [],
         }
 
         os.remove(file_path)
-
         return jsonify(pred_data), 200
     except FileNotFoundError:
         os.remove(file_path)

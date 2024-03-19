@@ -15,7 +15,7 @@ function App() {
   // STATE HOOKS
   const [fileSelected, setFileSelected] = useState(null); // Is there a file selected?
   const [selectedFile, setSelectedFile] = useState(null); // What is the selected file
-  const [fileName, setFileName] = useState(""); // File properties v v v
+  const [fileName, setFileName] = useState(""); // File Properties
   const [fileSize, setFileSize] = useState("---");
   const [fileType, setFileType] = useState("---");
   const [fileLastModified, setFileLastModified] = useState("---");
@@ -23,14 +23,17 @@ function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false); // Simulate authentication state
 
   // Prediction
-  const [predictionResults, setPredictionResults] = useState([]);
-  const [predictionError, setPredictionError] = useState("");
+  const [selectedModel, setSelectedModel] = useState("xgboost"); // Selected model
+  const [predictionResults, setPredictionResults] = useState([]); // Results return
+  const [predictionError, setPredictionError] = useState(""); // Error
 
-  // Search
-  const [searchID, setSearchID] = useState("");
-  const [showPrediction0, setShowPrediction0] = useState(true);
+  // Search & Filter
+  const [searchID, setSearchID] = useState(""); // Search
+  const [showPrediction0, setShowPrediction0] = useState(true); // Filters
   const [showPrediction1, setShowPrediction1] = useState(true);
-  const [filteredResults, setFilteredResults] = useState([]);
+  const [filteredResults, setFilteredResults] = useState([]); // Results after using search/pred. filter
+  const [sortOrder, setSortOrder] = useState("default"); // Table sort order
+  const [isReversed, setIsReversed] = useState(false); // Reversed?
 
   // Contacts
   const [hoveredContact, setHoveredContact] = useState(null);
@@ -88,21 +91,45 @@ function App() {
 
   // Search and filters
   useEffect(() => {
-    const filtered = predictionResults.filter((result) => {
-      const matchesID = searchID === "" || result.id.toString() === searchID;
+    let filtered = predictionResults.filter((result) => {
+      const matchesID =
+        searchID === "" || result.id.toString().includes(searchID);
       const matchesPrediction =
         (result.prediction === 0 && showPrediction0) ||
         (result.prediction === 1 && showPrediction1);
 
       return matchesID && matchesPrediction;
     });
+
+    if (sortOrder !== "default") {
+      filtered = filtered.sort((a, b) => {
+        if (sortOrder === "id") {
+          return a.id - b.id;
+        } else if (sortOrder === "riskscore") {
+          return a.riskScore - b.riskScore;
+        }
+        return 0; // Keep default order if none match
+      });
+    }
+
+    if (isReversed) {
+      filtered = filtered.reverse();
+    }
+
     setFilteredResults(filtered);
-  }, [searchID, showPrediction0, showPrediction1, predictionResults]);
+  }, [
+    searchID,
+    showPrediction0,
+    showPrediction1,
+    predictionResults,
+    sortOrder,
+    isReversed,
+  ]);
 
   const fileInputRef = useRef(null);
 
   // CHARTS & EARNINGS
-  const [earnings, setEarnings] = useState(0)
+  const [earnings, setEarnings] = useState(0);
   // Overall data, for the pie chart
   const [chartData, setChartData] = useState({
     labels: ["Under Threshold [0]", "Exceeds Threshold [1]"],
@@ -138,8 +165,9 @@ function App() {
     }
 
     const formData = new FormData();
-    formData.append("file", selectedFile);
-    console.log("Sending file to server:", selectedFile.name);
+    formData.append("file", selectedFile); // Send model to prediction
+    formData.append("modelType", selectedModel); // Specify the model you want to use
+    //console.log("Sending file to server:", selectedFile.name);
 
     try {
       const response = await fetch("http://localhost:5000/predict", {
@@ -148,11 +176,13 @@ function App() {
       });
 
       if (response.ok) {
-        const result = await response.json();
-        const results = result.prediction.map((prediction, index) => ({
-          id: index,
-          prediction,
+        const { ID, Prediction, RiskScore } = await response.json();
+        const results = ID.map((id, index) => ({
+          id,
+          prediction: Prediction[index],
+          riskScore: RiskScore[index],
         }));
+
         // Update predictions
         setPredictionResults(results);
 
@@ -186,9 +216,17 @@ function App() {
           sampledResults.push({ id: results[i].id, cumulativeCount });
         }
 
+        // Get earnings estimation
+        if (sampledResults.length > 0) {
+          const lastCumulativeCount =
+            sampledResults[sampledResults.length - 1].cumulativeCount;
+          setEarnings(lastCumulativeCount);
+        } else {
+          setEarnings(0);
+        }
+
         const labels = sampledResults.map((result) => `ID ${result.id}`);
         const data = sampledResults.map((result) => result.cumulativeCount);
-        setEarnings(result.cumulativeCount*1000)
 
         setLineChartData({
           labels: labels,
@@ -438,11 +476,25 @@ function App() {
                           </span>
                         </p>
                         <div className="file-header">
+                          <div className="model-selection">
+                            <label className="light-header" htmlFor="modelType">
+                              Model Type:
+                            </label>
+                            <select
+                              id="modelType"
+                              value={selectedModel}
+                              onChange={(e) => setSelectedModel(e.target.value)}
+                            >
+                              <option value="xgboost">XGBoost</option>
+                              <option value="randomforest">RandomForest</option>
+                            </select>
+                          </div>
                           <button
                             onClick={handlePredict}
                             className="basic-button"
                             type="button"
                             disabled={predictionResults.length > 0}
+                            style={{ marginLeft: "20px" }}
                           >
                             Predict
                           </button>
@@ -452,6 +504,26 @@ function App() {
                             value={searchID}
                             onChange={(e) => setSearchID(e.target.value)}
                             style={{ marginLeft: "20px" }}
+                          />
+                          <label className="extralight-header">
+                            Order by:&nbsp;
+                          </label>
+                          <select
+                            id="sortOrderType"
+                            value={sortOrder}
+                            onChange={(e) => setSortOrder(e.target.value)}
+                          >
+                            <option value="default">Default</option>
+                            <option value="id">ID</option>
+                            <option value="riskscore">Risk Score</option>
+                          </select>
+                          <label className="extralight-header">
+                            Reversed:&nbsp;
+                          </label>
+                          <input
+                            type="checkbox"
+                            checked={isReversed}
+                            onChange={() => setIsReversed(!isReversed)}
                           />
                           <label className="extralight-header">
                             Only show predictions of&nbsp;
@@ -495,6 +567,7 @@ function App() {
                                       <tr>
                                         <th>ID</th>
                                         <th>Prediction</th>
+                                        <th>Risk Score</th>
                                       </tr>
                                     </thead>
                                     <tbody>
@@ -502,6 +575,7 @@ function App() {
                                         <tr key={result.id}>
                                           <td>{result.id}</td>
                                           <td>{result.prediction}</td>
+                                          <td>{result.riskScore}</td>
                                         </tr>
                                       ))}
                                     </tbody>
@@ -516,7 +590,7 @@ function App() {
 
                             <div className="chart-results">
                               <p className="light-header">Estimated Earnings</p>
-                              <div class="earnings-value">${earnings}+</div>
+                              <div class="earnings-value">${earnings},000+</div>
 
                               {predictionResults.length > 0 && (
                                 <>
