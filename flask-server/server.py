@@ -146,13 +146,9 @@ def predict():
 
         # Prediction
         data_to_predict = pd.read_csv(file_path)
-        if 'id' in data_to_predict.columns:
-            user_id = data_to_predict['id'].tolist()
-            data_to_predict = data_to_predict.drop(['id'], axis=1)
-        else:
-            user_id = list(range(len(data_to_predict)))  # Fallback if no 'id'
-
         scaler = StandardScaler()
+        user_id = data_to_predict['id'].tolist()
+        data_to_predict = data_to_predict.drop(['id'], axis=1) # Drops ID
         x_standardized_data = scaler.fit_transform(data_to_predict)
 
         predictions = model.model.predict(x_standardized_data)
@@ -160,16 +156,19 @@ def predict():
         pred_data = {
             "ID": user_id,
             "Prediction": predictions.tolist(),
-            "RiskScore": data_to_predict['RiskScore'].tolist() if 'RiskScore' in data_to_predict else [],
+            "RiskScore": data_to_predict['RiskScore'].tolist() if 'RiskScore' in data_to_predict else []
         }
 
-        os.remove(file_path)
+        if os.path.exists(file_path):
+            os.remove(file_path)
         return jsonify(pred_data), 200
     except FileNotFoundError:
-        os.remove(file_path)
+        if os.path.exists(file_path):
+            os.remove(file_path)
         return jsonify({"error": "Model file not found. Please train the model before attempting to predict."}), 500
     except Exception as e:
-        os.remove(file_path)
+        if os.path.exists(file_path):
+            os.remove(file_path)
         return jsonify({"error": str(e)}), 500
 
 
@@ -218,7 +217,6 @@ def backend():
 #Root URL
 @app.route('/')
 def index():
-    #Sets HTML template
     return "trying this out"
 
 #I think this needs to be combined with the temporary backend in App.js to work properly.

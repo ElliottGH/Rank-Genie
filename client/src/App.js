@@ -1,3 +1,17 @@
+/*!
+ * RankGenie
+ *
+ * Written by:
+ * - Elliott Carter
+ * - Rithik Kalra
+ * - Scott Murray
+ * - Lauryn Son
+ * - Andrew Tobar
+ * - Lucas Winterburn
+ *
+ * 2023-2024
+ */
+
 import "./App.css";
 import React, { useState, useRef, useEffect } from "react";
 import { BrowserRouter as Router, Route, Routes, Link } from "react-router-dom";
@@ -7,7 +21,7 @@ import Admin from "./Admin";
 import Chart from "chart.js/auto";
 import { CategoryScale } from "chart.js";
 import PieChart from "./components/PieChart";
-import LineChart from "./components/LineChart";
+import ScatterPlot from "./components/ScatterPlot";
 
 Chart.register(CategoryScale);
 
@@ -26,6 +40,7 @@ function App() {
   const [selectedModel, setSelectedModel] = useState("xgboost"); // Selected model
   const [predictionResults, setPredictionResults] = useState([]); // Results return
   const [predictionError, setPredictionError] = useState(""); // Error
+  const [lastGeneratedModel, setLastGeneratedModel] = useState(""); // The last model a prediction was made with
 
   // Search & Filter
   const [searchID, setSearchID] = useState(""); // Search
@@ -130,8 +145,8 @@ function App() {
 
   // CHARTS & EARNINGS
   const [earnings, setEarnings] = useState(0);
-  // Overall data, for the pie chart
-  const [chartData, setChartData] = useState({
+  // Pie
+  const [pieData, setPieData] = useState({
     labels: ["Under Threshold [0]", "Exceeds Threshold [1]"],
     datasets: [
       {
@@ -143,16 +158,14 @@ function App() {
       },
     ],
   });
-  // Line chart data
-  const [lineChartData, setLineChartData] = useState({
-    labels: [],
+  // Scatter
+  const [scatterData, setScatterData] = useState({
     datasets: [
       {
-        label: "Cumulative Count of '1' Predictions",
+        label: "Risk Score vs. Prediction",
         data: [],
-        fill: false,
-        backgroundColor: "rgb(75, 192, 192)",
-        borderColor: "rgba(75, 192, 192, 0.2)",
+        backgroundColor: "rgba(75, 192, 192, 0.2)",
+        borderColor: "rgba(75, 192, 192, 1)",
       },
     ],
   });
@@ -178,13 +191,15 @@ function App() {
       if (response.ok) {
         const { ID, Prediction, RiskScore } = await response.json();
         const results = ID.map((id, index) => ({
+          uploadID: index,
           id,
           prediction: Prediction[index],
           riskScore: RiskScore[index],
         }));
 
-        // Update predictions
+        // Update predictions and lastGeneratedModel
         setPredictionResults(results);
+        setLastGeneratedModel(selectedModel);
 
         // Update chart data
         // Pie
@@ -192,7 +207,7 @@ function App() {
           acc[curr.prediction] = (acc[curr.prediction] || 0) + 1;
           return acc;
         }, {});
-        setChartData((prevChartData) => ({
+        setPieData((prevChartData) => ({
           ...prevChartData,
           datasets: [
             {
@@ -202,45 +217,30 @@ function App() {
           ],
         }));
 
-        // Line
-        const sampleSize = 100; // Number of points in line graph
-        const stepSize = Math.ceil(results.length / sampleSize);
-        let sampledResults = [];
-        let cumulativeCount = 0;
-        for (let i = 0; i < results.length; i += stepSize) {
-          for (let j = i; j < Math.min(i + stepSize, results.length); j++) {
-            if (results[j].prediction === 1) {
-              cumulativeCount++;
-            }
+        // Might as well get earnings estimation while we're doing this
+        const cumulativeCount = results.reduce((acc, curr) => {
+          if (curr.prediction === 1) {
+            acc += 1; // Increment if prediction is 1
           }
-          sampledResults.push({ id: results[i].id, cumulativeCount });
-        }
+          return acc;
+        }, 0);
+        setEarnings(cumulativeCount);
 
-        // Get earnings estimation
-        if (sampledResults.length > 0) {
-          const lastCumulativeCount =
-            sampledResults[sampledResults.length - 1].cumulativeCount;
-          setEarnings(lastCumulativeCount);
-        } else {
-          setEarnings(0);
-        }
-
-        const labels = sampledResults.map((result) => `ID ${result.id}`);
-        const data = sampledResults.map((result) => result.cumulativeCount);
-
-        setLineChartData({
-          labels: labels,
+        // Scatter
+        const scatterData = {
           datasets: [
             {
-              label: "Cumulative Predictions Over Threshold",
-              data: data,
-              fill: false,
-              backgroundColor: "rgb(75, 192, 192)",
-              borderColor: "rgba(75, 192, 192)",
-              pointRadius: 0,
+              label: "Risk Score vs. Prediction",
+              data: results.map((result) => ({
+                x: result.riskScore,
+                y: result.prediction,
+              })),
+              backgroundColor: "rgba(75, 192, 192, 0.2)",
+              borderColor: "rgba(75, 192, 192, 1)",
             },
           ],
-        });
+        };
+        setScatterData(scatterData);
 
         // Update error message
         setPredictionError("");
@@ -345,7 +345,21 @@ function App() {
           : "---"
       );
       setFileExtension("." + file.name.split(".").pop() || "---");
+    } else {
+      setFileSelected(false);
+      setSelectedFile(null);
+      setFileName("");
+      setFileSize("---");
+      setFileType("---");
+      setFileLastModified("---");
+      setFileExtension("---");
     }
+    setPredictionError("");
+    setPredictionResults([]);
+    setFilteredResults([]);
+    setSearchID("");
+    setShowPrediction0(true);
+    setShowPrediction1(true);
   };
 
   return (
@@ -493,7 +507,10 @@ function App() {
                             onClick={handlePredict}
                             className="basic-button"
                             type="button"
-                            disabled={predictionResults.length > 0}
+                            disabled={
+                              predictionResults.length > 0 &&
+                              selectedModel === lastGeneratedModel
+                            }
                             style={{ marginLeft: "20px" }}
                           >
                             Predict
@@ -572,7 +589,7 @@ function App() {
                                     </thead>
                                     <tbody>
                                       {filteredResults.map((result) => (
-                                        <tr key={result.id}>
+                                        <tr key={result.uploadID}>
                                           <td>{result.id}</td>
                                           <td>{result.prediction}</td>
                                           <td>{result.riskScore}</td>
@@ -590,7 +607,9 @@ function App() {
 
                             <div className="chart-results">
                               <p className="light-header">Estimated Earnings</p>
-                              <div class="earnings-value">${earnings},000+</div>
+                              <div className="earnings-value">
+                                ${earnings},000+
+                              </div>
 
                               {predictionResults.length > 0 && (
                                 <>
@@ -599,11 +618,11 @@ function App() {
                                   </p>
                                   <div className="chart-Container">
                                     <div>
-                                      <LineChart chartData={lineChartData} />
+                                      <PieChart chartData={pieData} />
                                     </div>
                                     <hr />
                                     <div>
-                                      <PieChart chartData={chartData} />
+                                      <ScatterPlot chartData={scatterData} />
                                     </div>
                                   </div>
                                 </>
@@ -638,7 +657,7 @@ function App() {
           {hoveredContact && (
             <div
               className="profile-card"
-              style={{ top: `${mousePos.y}px`, left: `${mousePos.x}px` }} // Adjusted
+              style={{ top: `${mousePos.y}px`, left: `${mousePos.x}px` }}
             >
               <div>
                 <img
