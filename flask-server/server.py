@@ -148,7 +148,7 @@ def predict():
         data_to_predict = pd.read_csv(file_path)
         if 'id' in data_to_predict.columns:
             user_id = data_to_predict['id'].tolist()
-            data_to_predict = data_to_predict.drop('id', axis=1)
+            data_to_predict = data_to_predict.drop(['id'], axis=1)
         else:
             user_id = list(range(len(data_to_predict)))  # Fallback if no 'id'
 
