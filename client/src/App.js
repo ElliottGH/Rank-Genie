@@ -242,6 +242,7 @@ function App() {
             return {
               x: result.riskScore,
               y: result.prediction,
+              id: result.id,
             };
           })
           .filter((point) => point !== null);

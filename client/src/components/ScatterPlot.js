@@ -31,6 +31,16 @@ function ScatterPlot({ chartData }) {
       legend: {
         display: false,
       },
+      tooltip: {
+        callbacks: {
+          label: function (context) {
+            const id = context.raw.id;
+            const riskScore = context.raw.x;
+            const prediction = context.raw.y;
+            return `ID: ${id}, Risk Score: ${riskScore}`;
+          },
+        },
+      },
     },
   };
 
