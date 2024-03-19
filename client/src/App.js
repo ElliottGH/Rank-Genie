@@ -227,13 +227,13 @@ function App() {
         setEarnings(cumulativeCount);
 
         // Scatter
-        // Sampling to make the graph not lag the whole site - should cut lag here by 90% without affecting distribution visualization too much
+        // Sampling to make the graph not lag the whole site - should cut lag by almost 90% without affecting distribution visualization too much
         // We can make this adjustable in the future
         let samplingCounter = 0;
         const filteredData = results
           .map((result) => {
             // If the prediction is 0 and risk score is under this, apply sampling
-            if (result.prediction === 0 && result.riskScore < 10) {
+            if (result.prediction === 0 && result.riskScore < 1.5) {
               samplingCounter += 1;
               if (samplingCounter % 10 !== 0) {
                 return null;
