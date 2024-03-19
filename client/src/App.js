@@ -190,12 +190,22 @@ function App() {
 
       if (response.ok) {
         const { ID, Prediction, RiskScore } = await response.json();
-        const results = ID.map((id, index) => ({
-          uploadID: index,
-          id,
-          prediction: Prediction[index],
-          riskScore: RiskScore[index],
-        }));
+        // Use a Set to keep track of unique IDs
+        const uniqueIDs = new Set();
+
+        // Filter out duplicate objects based on the ID
+        const results = ID.reduce((filteredResults, id, index) => {
+            if (!uniqueIDs.has(id)) {
+                uniqueIDs.add(id); // Add the ID to the Set
+                filteredResults.push({
+                    uploadID: index,
+                    id,
+                    prediction: Prediction[index],
+                    riskScore: RiskScore[index],
+                });
+            }
+            return filteredResults;
+        }, []);
 
         // Update predictions and lastGeneratedModel
         setPredictionResults(results);

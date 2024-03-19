@@ -146,6 +146,7 @@ def predict():
 
         # Prediction
         data_to_predict = pd.read_csv(file_path)
+        #data_to_predict = data_to_predict.drop_duplicates() 
         scaler = StandardScaler()
         user_id = data_to_predict['id'].tolist()
         data_to_predict = data_to_predict.drop(['id'], axis=1) # Drops ID
