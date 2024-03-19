@@ -160,9 +160,6 @@ class Genie(ABC):
       self.y_train = y_train
       self.y_test = y_test
 
-      ### DELETE THIS AFTER ###
-      X_train.to_csv("Output.csv", index = None)
-
     def evaluate_model(self):
       scaler = StandardScaler()
       X_trainStan = scaler.fit_transform(self.X_train)
