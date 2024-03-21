@@ -492,7 +492,31 @@ class DetectVPN():
     
     abv = str(abbrev)
     return abbrev_to_country.get(abv)
+  
+  #creating the ip_data csv
+  #
+  #merged_df['Registered_IP'] = merged_df['Registered_IP'].apply(lambda x: get_country_from_ip(x) if pd.notnull(x) else None)
+  #merged_df['Registered_IP'] = merged_df['Registered_IP'].apply(getIpLocation)
   #new_df['Registered_IP'] = new_df['Registered_IP'].apply(replace_abbrev)
   #new_df.head()
   #new_df.to_csv("country_with_ID.csv", index=None)
+  #
+  #
+  #this line is to be added to the preprocessing function to create the merged data file which has VPN detection
+  #
+  #merged_df = pd.merge(merged_df, ip_data, on='id', how='inner')
+  #this line is the lamba function that rcreates a new column that is the VPN detection that should be placed in preprocessing 
+  #
+  #merged_df['SameLocation'] = merged_df.apply(lambda row: 1 if row['ISPCountryName'] == row['IP_Country'] else 0, axis=1)
+  """
+  regdf = pd.read_csv("/content/drive/MyDrive/CapstoneProject(Ranking_System)/The Model OwO/UserRegDataset.csv")
+  paydf = pd.read_csv("/content/drive/MyDrive/CapstoneProject(Ranking_System)/The Model OwO/payments.csv")
+  ip_data = pd.read_csv("/content/drive/MyDrive/CapstoneProject(Ranking_System)/The Model OwO/country_with_ID.csv")
+
+  #regdf_cleaned, paydf_cleaned = preprocess(regdf, paydf)
+  preprocessed_df = preprocess(regdf, paydf, ip_data)
+  preprocessed_df.to_csv("Output.csv", index=None)
+  preprocessed_df.head()
+  """
+  #finalized preprocessing call ^^^^
 pass
