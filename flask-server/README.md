@@ -1,3 +1,7 @@
+# Welcome to RankGanie
+
+Improving revenue and product engagement is the main purpose of sales teams all around the world. These teams often spend time searching for strategies to best place their product in front of consumers. The main goal is converting these known consumers into paying customers; however, it tends to be unsuccessful. Attempting to fully utilize a business's pricing methods is one of the most difficult concepts to efficiently profit from, requiring the ability to identify and target a range of consumers and the possibility to convert them into paying customers. This capstone project, RankGenie, is an AI driven customer rating engine that ranks the companies clients based off of how they registered for the website and other significant information that was provided during the sign-up process. This will allow the organization to identify potential paying customers and invest their follow-ups on those customers over low-valued customers. It trains the model through the use of previously given historical data from a real-world organization to develop a system for ranking potential subscribers in the csv file provided by the website user.
+
 # RankGenie Setup Guide for macOS
 
 This guide provides step-by-step instructions for setting up a development environment on macOS, including installing Python, Pip, Homebrew, MySQL, and MySQL Workbench. Follow these steps carefully to ensure smooth installation and configuration.
