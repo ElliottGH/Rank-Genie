@@ -72,6 +72,32 @@ To install Node.js and React, and run the frontend, follow these steps:
 
 That's it! You've successfully set up your development environment to run Rank Genie with Python, Pip, Homebrew, MySQL, and MySQL Workbench on macOS. 
 
+# Setting up the local SQL user database
+
+## Step 1: Make sure a database called "genie" is created and in use
+
+CREATE DATABASE IF NOT EXISTS genie;
+USE genie;
+
+## Step 2: Creating User Table
+
+CREATE TABLE IF NOT EXISTS users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(255) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL
+);
+
+## Step 3: Create admin account
+
+password is "password" hashed
+
+INSERT INTO users (username, password) VALUES 
+('Admin', 'pbkdf2:sha256:600000$P9QlcfzM6WwNe9OC$5a54de9f2c60fbd7071929299b265412b01a546a8c3c85fcf9276b39c1cd622b');
+
+This is temporary until we have our database uploaded to a server.
+
+
+
 
 
 
